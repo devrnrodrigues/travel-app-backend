@@ -1,5 +1,6 @@
 package com.devrenanrodrigues.travelapi.destination.dto;
 
+import com.devrenanrodrigues.travelapi.destination.AiStatus;
 import com.devrenanrodrigues.travelapi.destination.Destination;
 
 import java.time.Instant;
@@ -13,8 +14,12 @@ public record DestinationResponseDTO(
         String nearestAirportIata,
         String name,
         String city,
+        String state,
         String country,
-        String category,
+        List<String> categories,
+        Double rating,
+        Integer reviewCount,
+        AiStatus aiStatus,
         Double latitude,
         Double longitude,
         String photoQuery,
@@ -43,8 +48,12 @@ public record DestinationResponseDTO(
                 airportIata,
                 destination.getName(),
                 destination.getCity(),
+                destination.getState(),
                 destination.getCountry(),
-                destination.getCategory(),
+                destination.getCategories(),
+                destination.getRating(),
+                destination.getReviewCount(),
+                destination.getAiStatus(),
                 destination.getLatitude(),
                 destination.getLongitude(),
                 destination.getPhotoQuery(),

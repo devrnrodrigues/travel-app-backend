@@ -35,8 +35,12 @@ public class DestinationService {
                 .nearestAirport(nearestAirport)
                 .name(dto.name().trim())
                 .city(dto.city().trim())
+                .state(dto.state() != null ? dto.state().trim() : null)
                 .country(dto.country().trim())
-                .category(dto.category().trim())
+                .categories(dto.categories() != null ? dto.categories().stream().map(String::trim).toList() : List.of())
+                .rating(dto.rating() != null ? dto.rating() : 0.0)
+                .reviewCount(0)
+                .aiStatus(dto.aiStatus() != null ? dto.aiStatus() : AiStatus.PENDING)
                 .latitude(dto.latitude())
                 .longitude(dto.longitude())
                 .photoQuery(dto.photoQuery().trim())
@@ -50,9 +54,49 @@ public class DestinationService {
         return DestinationResponseDTO.fromEntity(saved);
     }
 
+    @Transactional
+    public DestinationResponseDTO update(UUID id, DestinationRequestDTO dto) {
+        Destination destination = destinationRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Destino não encontrado com o id: " + id
+                ));
+
+        Airport nearestAirport = destination.getNearestAirport();
+        if (dto.nearestAirportId() != null) {
+            nearestAirport = airportRepository.findById(dto.nearestAirportId())
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND,
+                            "Aeroporto mais próximo não encontrado com o id: " + dto.nearestAirportId()
+                    ));
+        }
+
+        destination.setNearestAirport(nearestAirport);
+        destination.setName(dto.name().trim());
+        destination.setCity(dto.city().trim());
+        destination.setState(dto.state() != null ? dto.state().trim() : null);
+        destination.setCountry(dto.country().trim());
+        destination.setCategories(dto.categories() != null ? dto.categories().stream().map(String::trim).toList() : List.of());
+        if (dto.rating() != null) {
+            destination.setRating(dto.rating());
+        }
+        if (dto.aiStatus() != null) {
+            destination.setAiStatus(dto.aiStatus());
+        }
+        destination.setLatitude(dto.latitude());
+        destination.setLongitude(dto.longitude());
+        destination.setPhotoQuery(dto.photoQuery().trim());
+        destination.setCoverImageUrl(dto.coverImageUrl());
+        destination.setGalleryUrls(dto.galleryUrls());
+        destination.setAiSummary(dto.aiSummary());
+        destination.setAiCostEstimates(dto.aiCostEstimates());
+
+        return DestinationResponseDTO.fromEntity(destination);
+    }
+
     @Transactional(readOnly = true)
-    public List<DestinationResponseDTO> findAll(String category, String city, String country) {
-        return destinationRepository.search(category, city, country)
+    public List<DestinationResponseDTO> findAll(String category) {
+        return destinationRepository.search(category)
                 .stream()
                 .map(DestinationResponseDTO::fromEntity)
                 .toList();

@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -31,13 +32,16 @@ public class DestinationController {
         return destinationService.create(dto);
     }
 
+    @PutMapping("/{id}")
+    public DestinationResponseDTO update(@PathVariable UUID id, @RequestBody @Valid DestinationRequestDTO dto) {
+        return destinationService.update(id, dto);
+    }
+
     @GetMapping
     public List<DestinationResponseDTO> findAll(
-            @RequestParam(required = false) String category,
-            @RequestParam(required = false) String city,
-            @RequestParam(required = false) String country
+            @RequestParam(required = false) String category
     ) {
-        return destinationService.findAll(category, city, country);
+        return destinationService.findAll(category);
     }
 
     @GetMapping("/{id}")

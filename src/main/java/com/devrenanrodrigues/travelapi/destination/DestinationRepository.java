@@ -11,13 +11,8 @@ import java.util.UUID;
 @Repository
 public interface DestinationRepository extends JpaRepository<Destination, UUID> {
 
-    @Query("SELECT d FROM Destination d LEFT JOIN FETCH d.nearestAirport " +
-           "WHERE (:category IS NULL OR LOWER(d.category) = LOWER(:category)) " +
-           "AND (:city IS NULL OR LOWER(d.city) = LOWER(:city)) " +
-           "AND (:country IS NULL OR LOWER(d.country) = LOWER(:country))")
-    List<Destination> search(
-            @Param("category") String category,
-            @Param("city") String city,
-            @Param("country") String country
-    );
+    @Query(value = "SELECT * FROM destinations d " +
+           "WHERE (:category IS NULL OR (d.categories IS NOT NULL AND :category ILIKE ANY(d.categories)))",
+           nativeQuery = true)
+    List<Destination> search(@Param("category") String category);
 }

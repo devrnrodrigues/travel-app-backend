@@ -3,6 +3,7 @@ package com.devrenanrodrigues.travelapi.favorite.dto;
 import com.devrenanrodrigues.travelapi.favorite.Favorite;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 public record FavoriteResponseDTO(
@@ -11,7 +12,7 @@ public record FavoriteResponseDTO(
         String destinationName,
         String destinationCity,
         String destinationCountry,
-        String destinationCategory,
+        List<String> destinationCategories,
         String destinationCoverImageUrl,
         Instant createdAt
 ) {
@@ -22,7 +23,7 @@ public record FavoriteResponseDTO(
                 favorite.getDestination().getName(),
                 favorite.getDestination().getCity(),
                 favorite.getDestination().getCountry(),
-                favorite.getDestination().getCategory(),
+                favorite.getDestination().getCategories(),
                 favorite.getDestination().getCoverImageUrl(),
                 favorite.getCreatedAt()
         );

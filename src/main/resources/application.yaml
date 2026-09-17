@@ -20,3 +20,9 @@ rapidapi:
     base-url: ${RAPIDAPI_BOOKING_URL}
     key: ${RAPIDAPI_KEY}
     host: ${RAPIDAPI_HOST}
+
+weather:
+  open-meteo:
+    base-url: ${WEATHER_OPEN_METEO_BASE_URL}
+    cache-ttl-hours: ${WEATHER_CACHE_TTL_HOURS}
+

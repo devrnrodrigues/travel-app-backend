@@ -8,7 +8,7 @@ import com.devrenanrodrigues.travelapi.destination.dto.DestinationDetailResponse
 import com.devrenanrodrigues.travelapi.destination.dto.DestinationRequestDTO;
 import com.devrenanrodrigues.travelapi.destination.dto.DestinationResponseDTO;
 import com.devrenanrodrigues.travelapi.destination.dto.DestinationSummaryResponseDTO;
-import com.devrenanrodrigues.travelapi.weather.DestinationWeatherRepository;
+import com.devrenanrodrigues.travelapi.weather.WeatherService;
 import com.devrenanrodrigues.travelapi.weather.dto.WeatherResponseDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -27,7 +27,7 @@ public class DestinationService {
 
     private final DestinationRepository destinationRepository;
     private final AirportRepository airportRepository;
-    private final DestinationWeatherRepository weatherRepository;
+    private final WeatherService weatherService;
     private final CommentService commentService;
 
     @Transactional
@@ -110,7 +110,7 @@ public class DestinationService {
                 .map(DestinationSummaryResponseDTO::fromEntity);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public DestinationDetailResponseDTO findById(UUID id) {
         Destination destination = destinationRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -118,9 +118,7 @@ public class DestinationService {
                         "Destino não encontrado com o id: " + id
                 ));
 
-        WeatherResponseDTO weather = weatherRepository.findById(id)
-                .map(WeatherResponseDTO::fromEntity)
-                .orElse(null);
+        WeatherResponseDTO weather = weatherService.getOrFetchWeather(destination);
 
         DestinationCommentsSummaryDTO comments = commentService.findByDestinationId(id);
 

@@ -2,9 +2,17 @@ package com.devrenanrodrigues.travelapi.destination;
 
 import com.devrenanrodrigues.travelapi.airport.Airport;
 import com.devrenanrodrigues.travelapi.airport.AirportRepository;
+import com.devrenanrodrigues.travelapi.comment.CommentService;
+import com.devrenanrodrigues.travelapi.comment.dto.DestinationCommentsSummaryDTO;
+import com.devrenanrodrigues.travelapi.destination.dto.DestinationDetailResponseDTO;
 import com.devrenanrodrigues.travelapi.destination.dto.DestinationRequestDTO;
 import com.devrenanrodrigues.travelapi.destination.dto.DestinationResponseDTO;
+import com.devrenanrodrigues.travelapi.destination.dto.DestinationSummaryResponseDTO;
+import com.devrenanrodrigues.travelapi.weather.DestinationWeatherRepository;
+import com.devrenanrodrigues.travelapi.weather.dto.WeatherResponseDTO;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +27,8 @@ public class DestinationService {
 
     private final DestinationRepository destinationRepository;
     private final AirportRepository airportRepository;
+    private final DestinationWeatherRepository weatherRepository;
+    private final CommentService commentService;
 
     @Transactional
     public DestinationResponseDTO create(DestinationRequestDTO dto) {
@@ -95,21 +105,26 @@ public class DestinationService {
     }
 
     @Transactional(readOnly = true)
-    public List<DestinationResponseDTO> findAll(String category) {
-        return destinationRepository.search(category)
-                .stream()
-                .map(DestinationResponseDTO::fromEntity)
-                .toList();
+    public Page<DestinationSummaryResponseDTO> findAll(String category, Pageable pageable) {
+        return destinationRepository.search(category, pageable)
+                .map(DestinationSummaryResponseDTO::fromEntity);
     }
 
     @Transactional(readOnly = true)
-    public DestinationResponseDTO findById(UUID id) {
+    public DestinationDetailResponseDTO findById(UUID id) {
         Destination destination = destinationRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Destino não encontrado com o id: " + id
                 ));
-        return DestinationResponseDTO.fromEntity(destination);
+
+        WeatherResponseDTO weather = weatherRepository.findById(id)
+                .map(WeatherResponseDTO::fromEntity)
+                .orElse(null);
+
+        DestinationCommentsSummaryDTO comments = commentService.findByDestinationId(id);
+
+        return DestinationDetailResponseDTO.of(destination, weather, comments);
     }
 
     @Transactional

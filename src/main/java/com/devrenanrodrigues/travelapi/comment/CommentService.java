@@ -37,6 +37,13 @@ public class CommentService {
                 .build();
 
         Comment saved = commentRepository.save(comment);
+
+        Double avg = commentRepository.getAverageRatingByDestinationId(destinationId);
+        int count = commentRepository.findByDestinationIdOrderByCreatedAtDesc(destinationId).size();
+        destination.setRating(avg != null ? Math.round(avg * 10.0) / 10.0 : 0.0);
+        destination.setReviewCount(count);
+        destinationRepository.save(destination);
+
         return CommentResponseDTO.fromEntity(saved);
     }
 
@@ -67,9 +74,18 @@ public class CommentService {
 
     @Transactional
     public void delete(UUID id) {
-        if (!commentRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Comentário não encontrado com o id: " + id);
+        Comment comment = commentRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comentário não encontrado com o id: " + id));
+
+        Destination destination = comment.getDestination();
+        commentRepository.delete(comment);
+
+        if (destination != null) {
+            Double avg = commentRepository.getAverageRatingByDestinationId(destination.getId());
+            int count = commentRepository.findByDestinationIdOrderByCreatedAtDesc(destination.getId()).size();
+            destination.setRating(avg != null ? Math.round(avg * 10.0) / 10.0 : 0.0);
+            destination.setReviewCount(count);
+            destinationRepository.save(destination);
         }
-        commentRepository.deleteById(id);
     }
 }

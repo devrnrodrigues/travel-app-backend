@@ -1,9 +1,14 @@
 package com.devrenanrodrigues.travelapi.destination;
 
+import com.devrenanrodrigues.travelapi.destination.dto.DestinationDetailResponseDTO;
 import com.devrenanrodrigues.travelapi.destination.dto.DestinationRequestDTO;
 import com.devrenanrodrigues.travelapi.destination.dto.DestinationResponseDTO;
+import com.devrenanrodrigues.travelapi.destination.dto.DestinationSummaryResponseDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,7 +21,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -38,14 +42,15 @@ public class DestinationController {
     }
 
     @GetMapping
-    public List<DestinationResponseDTO> findAll(
-            @RequestParam(required = false) String category
+    public Page<DestinationSummaryResponseDTO> findAll(
+            @RequestParam(required = false) String category,
+            @PageableDefault(size = 10, page = 0, sort = "name") Pageable pageable
     ) {
-        return destinationService.findAll(category);
+        return destinationService.findAll(category, pageable);
     }
 
     @GetMapping("/{id}")
-    public DestinationResponseDTO findById(@PathVariable UUID id) {
+    public DestinationDetailResponseDTO findById(@PathVariable UUID id) {
         return destinationService.findById(id);
     }
 

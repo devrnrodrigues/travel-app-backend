@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -26,7 +27,13 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "destinations")
+@Table(
+        name = "destinations",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_destination_name_country",
+                columnNames = {"name", "country"}
+        )
+)
 @Getter
 @Setter
 @NoArgsConstructor

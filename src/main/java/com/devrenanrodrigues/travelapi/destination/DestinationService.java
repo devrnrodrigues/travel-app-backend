@@ -32,6 +32,13 @@ public class DestinationService {
 
     @Transactional
     public DestinationResponseDTO create(DestinationRequestDTO dto) {
+        String trimmedName = dto.name().trim();
+        String trimmedCountry = dto.country().trim();
+
+        if (destinationRepository.existsByNameIgnoreCaseAndCountryIgnoreCase(trimmedName, trimmedCountry)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Destino já cadastrado para este país: " + trimmedName);
+        }
+
         Airport nearestAirport = null;
         if (dto.nearestAirportId() != null) {
             nearestAirport = airportRepository.findById(dto.nearestAirportId())
@@ -43,10 +50,10 @@ public class DestinationService {
 
         Destination destination = Destination.builder()
                 .nearestAirport(nearestAirport)
-                .name(dto.name().trim())
+                .name(trimmedName)
                 .city(dto.city().trim())
                 .state(dto.state() != null ? dto.state().trim() : null)
-                .country(dto.country().trim())
+                .country(trimmedCountry)
                 .categories(dto.categories() != null ? dto.categories().stream().map(String::trim).toList() : List.of())
                 .rating(dto.rating() != null ? dto.rating() : 0.0)
                 .reviewCount(0)
@@ -72,6 +79,13 @@ public class DestinationService {
                         "Destino não encontrado com o id: " + id
                 ));
 
+        String trimmedName = dto.name().trim();
+        String trimmedCountry = dto.country().trim();
+
+        if (destinationRepository.existsByNameIgnoreCaseAndCountryIgnoreCaseAndIdNot(trimmedName, trimmedCountry, id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Destino já cadastrado para este país: " + trimmedName);
+        }
+
         Airport nearestAirport = destination.getNearestAirport();
         if (dto.nearestAirportId() != null) {
             nearestAirport = airportRepository.findById(dto.nearestAirportId())
@@ -82,10 +96,10 @@ public class DestinationService {
         }
 
         destination.setNearestAirport(nearestAirport);
-        destination.setName(dto.name().trim());
+        destination.setName(trimmedName);
         destination.setCity(dto.city().trim());
         destination.setState(dto.state() != null ? dto.state().trim() : null);
-        destination.setCountry(dto.country().trim());
+        destination.setCountry(trimmedCountry);
         destination.setCategories(dto.categories() != null ? dto.categories().stream().map(String::trim).toList() : List.of());
         if (dto.rating() != null) {
             destination.setRating(dto.rating());

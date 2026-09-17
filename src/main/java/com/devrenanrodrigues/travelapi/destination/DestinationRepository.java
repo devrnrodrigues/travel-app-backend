@@ -24,4 +24,8 @@ public interface DestinationRepository extends JpaRepository<Destination, UUID> 
             @Param("name") String name,
             Pageable pageable
     );
+
+    boolean existsByNameIgnoreCaseAndCountryIgnoreCase(String name, String country);
+
+    boolean existsByNameIgnoreCaseAndCountryIgnoreCaseAndIdNot(String name, String country, UUID id);
 }

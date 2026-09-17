@@ -105,8 +105,10 @@ public class DestinationService {
     }
 
     @Transactional(readOnly = true)
-    public Page<DestinationSummaryResponseDTO> findAll(String category, Pageable pageable) {
-        return destinationRepository.search(category, pageable)
+    public Page<DestinationSummaryResponseDTO> findAll(String category, String name, Pageable pageable) {
+        String cleanCategory = (category != null && !category.isBlank()) ? category.trim() : null;
+        String cleanName = (name != null && !name.isBlank()) ? name.trim() : null;
+        return destinationRepository.search(cleanCategory, cleanName, pageable)
                 .map(DestinationSummaryResponseDTO::fromEntity);
     }
 

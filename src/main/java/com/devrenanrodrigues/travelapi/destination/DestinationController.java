@@ -44,9 +44,10 @@ public class DestinationController {
     @GetMapping
     public Page<DestinationSummaryResponseDTO> findAll(
             @RequestParam(required = false) String category,
+            @RequestParam(required = false) String name,
             @PageableDefault(size = 10, page = 0, sort = "name") Pageable pageable
     ) {
-        return destinationService.findAll(category, pageable);
+        return destinationService.findAll(category, name, pageable);
     }
 
     @GetMapping("/{id}")

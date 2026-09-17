@@ -13,9 +13,15 @@ import java.util.UUID;
 public interface DestinationRepository extends JpaRepository<Destination, UUID> {
 
     @Query(value = "SELECT * FROM destinations d " +
-           "WHERE (:category IS NULL OR (d.categories IS NOT NULL AND :category ILIKE ANY(d.categories)))",
+           "WHERE (:category IS NULL OR (d.categories IS NOT NULL AND :category ILIKE ANY(d.categories))) " +
+           "AND (:name IS NULL OR d.name ILIKE CONCAT('%', :name, '%'))",
            countQuery = "SELECT count(*) FROM destinations d " +
-           "WHERE (:category IS NULL OR (d.categories IS NOT NULL AND :category ILIKE ANY(d.categories)))",
+           "WHERE (:category IS NULL OR (d.categories IS NOT NULL AND :category ILIKE ANY(d.categories))) " +
+           "AND (:name IS NULL OR d.name ILIKE CONCAT('%', :name, '%'))",
            nativeQuery = true)
-    Page<Destination> search(@Param("category") String category, Pageable pageable);
+    Page<Destination> search(
+            @Param("category") String category,
+            @Param("name") String name,
+            Pageable pageable
+    );
 }

@@ -1,5 +1,6 @@
 package com.devrenanrodrigues.travelapi.destination.dto;
 
+import com.devrenanrodrigues.travelapi.airport.dto.AirportResponseDTO;
 import com.devrenanrodrigues.travelapi.comment.dto.DestinationCommentsSummaryDTO;
 import com.devrenanrodrigues.travelapi.destination.Destination;
 import com.devrenanrodrigues.travelapi.weather.dto.WeatherResponseDTO;
@@ -15,7 +16,10 @@ public record DestinationDetailResponseDTO(
         String country,
         String coverImageUrl,
         Double rating,
+        Integer reviewCount,
         String description,
+        String aiCostEstimates,
+        AirportResponseDTO nearestAirport,
         List<String> galleryUrls,
         WeatherResponseDTO weather,
         DestinationCommentsSummaryDTO comments
@@ -33,7 +37,10 @@ public record DestinationDetailResponseDTO(
                 destination.getCountry(),
                 destination.getCoverImageUrl(),
                 destination.getRating(),
+                destination.getReviewCount(),
                 destination.getAiSummary(),
+                destination.getAiCostEstimates(),
+                destination.getNearestAirport() != null ? AirportResponseDTO.fromEntity(destination.getNearestAirport()) : null,
                 destination.getGalleryUrls(),
                 weather,
                 comments

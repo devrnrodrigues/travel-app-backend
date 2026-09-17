@@ -13,7 +13,8 @@ public record DestinationSummaryResponseDTO(
         String country,
         List<String> categories,
         String coverImageUrl,
-        Double rating
+        Double rating,
+        Integer reviewCount
 ) {
     public static DestinationSummaryResponseDTO fromEntity(Destination destination) {
         return new DestinationSummaryResponseDTO(
@@ -24,7 +25,8 @@ public record DestinationSummaryResponseDTO(
                 destination.getCountry(),
                 destination.getCategories(),
                 destination.getCoverImageUrl(),
-                destination.getRating()
+                destination.getRating(),
+                destination.getReviewCount()
         );
     }
 }

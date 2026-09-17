@@ -8,15 +8,14 @@ import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 
 public record CommentRequestDTO(
-        @NotNull
         UUID userId,
 
-        @NotNull
-        @Min(1)
-        @Max(5)
+        @NotNull(message = "A avaliação é obrigatória")
+        @Min(value = 1, message = "A avaliação mínima é 1")
+        @Max(value = 5, message = "A avaliação máxima é 5")
         Integer rating,
 
-        @NotBlank
+        @NotBlank(message = "O comentário é obrigatório")
         String content
 ) {
 }

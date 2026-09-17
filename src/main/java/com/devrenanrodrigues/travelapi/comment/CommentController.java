@@ -3,9 +3,12 @@ package com.devrenanrodrigues.travelapi.comment;
 import com.devrenanrodrigues.travelapi.comment.dto.CommentRequestDTO;
 import com.devrenanrodrigues.travelapi.comment.dto.CommentResponseDTO;
 import com.devrenanrodrigues.travelapi.comment.dto.DestinationCommentsSummaryDTO;
+import com.devrenanrodrigues.travelapi.security.SecurityUtils;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,9 +29,11 @@ public class CommentController {
     @ResponseStatus(HttpStatus.CREATED)
     public CommentResponseDTO create(
             @PathVariable UUID destinationId,
-            @RequestBody @Valid CommentRequestDTO dto
+            @RequestBody @Valid CommentRequestDTO dto,
+            @AuthenticationPrincipal Jwt jwt
     ) {
-        return commentService.create(destinationId, dto);
+        UUID userId = SecurityUtils.getUserId(jwt);
+        return commentService.create(destinationId, userId, dto);
     }
 
     @GetMapping("/api/destinations/{destinationId}/comments")
@@ -38,7 +43,11 @@ public class CommentController {
 
     @DeleteMapping("/api/comments/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable UUID id) {
-        commentService.delete(id);
+    public void delete(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        UUID userId = SecurityUtils.getUserId(jwt);
+        commentService.delete(id, userId);
     }
 }

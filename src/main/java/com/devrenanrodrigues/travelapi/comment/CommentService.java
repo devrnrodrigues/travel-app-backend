@@ -22,7 +22,7 @@ public class CommentService {
     private final DestinationRepository destinationRepository;
 
     @Transactional
-    public CommentResponseDTO create(UUID destinationId, CommentRequestDTO dto) {
+    public CommentResponseDTO create(UUID destinationId, UUID userId, CommentRequestDTO dto) {
         Destination destination = destinationRepository.findById(destinationId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
@@ -30,7 +30,7 @@ public class CommentService {
                 ));
 
         Comment comment = Comment.builder()
-                .userId(dto.userId())
+                .userId(userId)
                 .destination(destination)
                 .rating(dto.rating())
                 .content(dto.content().trim())
@@ -73,9 +73,13 @@ public class CommentService {
     }
 
     @Transactional
-    public void delete(UUID id) {
+    public void delete(UUID id, UUID userId) {
         Comment comment = commentRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comentário não encontrado com o id: " + id));
+
+        if (!comment.getUserId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não tem permissão para excluir este comentário.");
+        }
 
         Destination destination = comment.getDestination();
         commentRepository.delete(comment);

@@ -29,6 +29,7 @@ public class AirportService {
                 .iataCode(normalizedIata)
                 .name(dto.name().trim())
                 .city(dto.city().trim())
+                .state(dto.state() != null ? dto.state().trim() : null)
                 .country(dto.country().trim())
                 .latitude(dto.latitude())
                 .longitude(dto.longitude())

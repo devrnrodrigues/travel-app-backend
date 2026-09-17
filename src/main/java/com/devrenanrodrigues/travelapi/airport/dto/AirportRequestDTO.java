@@ -17,6 +17,9 @@ public record AirportRequestDTO(
         @Size(max = 100)
         String city,
 
+        @Size(max = 100)
+        String state,
+
         @NotBlank
         @Size(max = 100)
         String country,

@@ -9,6 +9,7 @@ public record AirportResponseDTO(
         String iataCode,
         String name,
         String city,
+        String state,
         String country,
         Double latitude,
         Double longitude
@@ -19,6 +20,7 @@ public record AirportResponseDTO(
                 airport.getIataCode(),
                 airport.getName(),
                 airport.getCity(),
+                airport.getState(),
                 airport.getCountry(),
                 airport.getLatitude(),
                 airport.getLongitude()

@@ -36,6 +36,9 @@ public class Airport {
     @Column(length = 100, nullable = false)
     private String city;
 
+    @Column(length = 100)
+    private String state;
+
     @Column(length = 100, nullable = false)
     private String country;
 

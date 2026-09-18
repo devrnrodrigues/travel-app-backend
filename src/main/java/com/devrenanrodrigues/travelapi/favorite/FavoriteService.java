@@ -53,6 +53,31 @@ public class FavoriteService {
     }
 
     @Transactional(readOnly = true)
+    public List<FavoriteResponseDTO> findFavorites(UUID authenticatedUserId, boolean isAdmin, UUID targetUserId) {
+        if (!isAdmin && targetUserId != null && !targetUserId.equals(authenticatedUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não tem permissão para visualizar favoritos de outros usuários.");
+        }
+
+        if (isAdmin) {
+            if (targetUserId != null) {
+                return favoriteRepository.findByUserId(targetUserId)
+                        .stream()
+                        .map(FavoriteResponseDTO::fromEntity)
+                        .toList();
+            }
+            return favoriteRepository.findAllWithDestination()
+                    .stream()
+                    .map(FavoriteResponseDTO::fromEntity)
+                    .toList();
+        }
+
+        return favoriteRepository.findByUserId(authenticatedUserId)
+                .stream()
+                .map(FavoriteResponseDTO::fromEntity)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<FavoriteResponseDTO> findByUserId(UUID userId) {
         return favoriteRepository.findByUserId(userId)
                 .stream()

@@ -14,6 +14,9 @@ public interface FavoriteRepository extends JpaRepository<Favorite, FavoriteId> 
     @Query("SELECT f FROM Favorite f JOIN FETCH f.destination WHERE f.id.userId = :userId ORDER BY f.createdAt DESC")
     List<Favorite> findByUserId(@Param("userId") UUID userId);
 
+    @Query("SELECT f FROM Favorite f JOIN FETCH f.destination ORDER BY f.createdAt DESC")
+    List<Favorite> findAllWithDestination();
+
     boolean existsByIdUserIdAndIdDestinationId(UUID userId, UUID destinationId);
 
     void deleteByIdUserIdAndIdDestinationId(UUID userId, UUID destinationId);

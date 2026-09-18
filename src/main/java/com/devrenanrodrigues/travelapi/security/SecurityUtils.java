@@ -20,4 +20,12 @@ public final class SecurityUtils {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Identificador de usuário inválido no token.");
         }
     }
+
+    public static boolean isAdmin(Jwt jwt) {
+        if (jwt == null) {
+            return false;
+        }
+        String role = jwt.getClaimAsString("role");
+        return "ADMIN".equalsIgnoreCase(role);
+    }
 }

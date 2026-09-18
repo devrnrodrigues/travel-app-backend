@@ -4,7 +4,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -14,6 +13,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
+
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
@@ -31,23 +33,32 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Rotas públicas (Leitura e autenticação)
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/destinations/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/airports/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/weather/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/destinations/*/weather").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/destinations/*/comments").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
 
-                        // Rotas protegidas (exigem JWT válido)
-                        .requestMatchers("/api/favorites/**").authenticated()
-                        .requestMatchers("/api/comments/**").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/destinations/**").authenticated()
-                        .requestMatchers(HttpMethod.PUT, "/api/destinations/**").authenticated()
-                        .requestMatchers(HttpMethod.DELETE, "/api/destinations/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/destinations/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/destinations/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/destinations/**").hasRole("ADMIN")
+
+                        .requestMatchers(HttpMethod.PUT, "/api/destinations/*/weather").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/destinations/*/weather").hasRole("ADMIN")
+
+                        .requestMatchers(HttpMethod.POST, "/api/airports/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/airports/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/airports/**").hasRole("ADMIN")
+
+                        .requestMatchers(HttpMethod.GET, "/api/airports/**").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers("/api/flights/**").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers("/api/favorites/**").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers("/api/comments/**").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/destinations/*/comments").hasAnyRole("USER", "ADMIN")
+
                         .anyRequest().authenticated()
                 )
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())))
                 .build();
     }
 
@@ -60,5 +71,16 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public JwtAuthenticationConverter jwtAuthenticationConverter() {
+        JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
+        grantedAuthoritiesConverter.setAuthoritiesClaimName("role");
+        grantedAuthoritiesConverter.setAuthorityPrefix("ROLE_");
+
+        JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
+        jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
+        return jwtAuthenticationConverter;
     }
 }

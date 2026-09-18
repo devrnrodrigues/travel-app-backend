@@ -13,6 +13,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Check;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -21,6 +22,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "users")
+@Check(constraints = "(provider = 'LOCAL' AND password_hash IS NOT NULL) OR (provider = 'GOOGLE')")
 @Getter
 @Setter
 @NoArgsConstructor

@@ -39,6 +39,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/destinations/*/comments").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
 
+                        .requestMatchers(HttpMethod.POST, "/api/destinations/*/comments").hasAnyRole("USER", "ADMIN")
+
                         .requestMatchers(HttpMethod.POST, "/api/destinations/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/destinations/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/destinations/**").hasRole("ADMIN")
@@ -54,7 +56,6 @@ public class SecurityConfig {
                         .requestMatchers("/api/flights/**").hasAnyRole("USER", "ADMIN")
                         .requestMatchers("/api/favorites/**").hasAnyRole("USER", "ADMIN")
                         .requestMatchers("/api/comments/**").hasAnyRole("USER", "ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/destinations/*/comments").hasAnyRole("USER", "ADMIN")
 
                         .anyRequest().authenticated()
                 )

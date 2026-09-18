@@ -23,6 +23,10 @@ public class CommentService {
 
     @Transactional
     public CommentResponseDTO create(UUID destinationId, UUID userId, CommentRequestDTO dto) {
+        if (commentRepository.existsByDestinationIdAndUserId(destinationId, userId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Você já avaliou este destino.");
+        }
+
         Destination destination = destinationRepository.findById(destinationId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
@@ -37,12 +41,7 @@ public class CommentService {
                 .build();
 
         Comment saved = commentRepository.save(comment);
-
-        Double avg = commentRepository.getAverageRatingByDestinationId(destinationId);
-        int count = commentRepository.findByDestinationIdOrderByCreatedAtDesc(destinationId).size();
-        destination.setRating(avg != null ? Math.round(avg * 10.0) / 10.0 : 0.0);
-        destination.setReviewCount(count);
-        destinationRepository.save(destination);
+        updateDestinationRatingAndCount(destination);
 
         return CommentResponseDTO.fromEntity(saved);
     }
@@ -73,11 +72,32 @@ public class CommentService {
     }
 
     @Transactional
-    public void delete(UUID id, UUID userId) {
+    public CommentResponseDTO update(UUID id, UUID userId, boolean isAdmin, CommentRequestDTO dto) {
         Comment comment = commentRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comentário não encontrado com o id: " + id));
 
-        if (!comment.getUserId().equals(userId)) {
+        if (!isAdmin && !comment.getUserId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não tem permissão para editar este comentário.");
+        }
+
+        comment.setRating(dto.rating());
+        comment.setContent(dto.content().trim());
+        Comment updated = commentRepository.save(comment);
+
+        Destination destination = comment.getDestination();
+        if (destination != null) {
+            updateDestinationRatingAndCount(destination);
+        }
+
+        return CommentResponseDTO.fromEntity(updated);
+    }
+
+    @Transactional
+    public void delete(UUID id, UUID userId, boolean isAdmin) {
+        Comment comment = commentRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comentário não encontrado com o id: " + id));
+
+        if (!isAdmin && !comment.getUserId().equals(userId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não tem permissão para excluir este comentário.");
         }
 
@@ -85,11 +105,15 @@ public class CommentService {
         commentRepository.delete(comment);
 
         if (destination != null) {
-            Double avg = commentRepository.getAverageRatingByDestinationId(destination.getId());
-            int count = commentRepository.findByDestinationIdOrderByCreatedAtDesc(destination.getId()).size();
-            destination.setRating(avg != null ? Math.round(avg * 10.0) / 10.0 : 0.0);
-            destination.setReviewCount(count);
-            destinationRepository.save(destination);
+            updateDestinationRatingAndCount(destination);
         }
+    }
+
+    private void updateDestinationRatingAndCount(Destination destination) {
+        Double avg = commentRepository.getAverageRatingByDestinationId(destination.getId());
+        int count = commentRepository.findByDestinationIdOrderByCreatedAtDesc(destination.getId()).size();
+        destination.setRating(avg != null ? Math.round(avg * 10.0) / 10.0 : 0.0);
+        destination.setReviewCount(count);
+        destinationRepository.save(destination);
     }
 }

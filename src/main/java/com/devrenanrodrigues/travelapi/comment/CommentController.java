@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -41,6 +42,17 @@ public class CommentController {
         return commentService.findByDestinationId(destinationId);
     }
 
+    @PutMapping("/api/comments/{id}")
+    public CommentResponseDTO update(
+            @PathVariable UUID id,
+            @RequestBody @Valid CommentRequestDTO dto,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        UUID userId = SecurityUtils.getUserId(jwt);
+        boolean isAdmin = SecurityUtils.isAdmin(jwt);
+        return commentService.update(id, userId, isAdmin, dto);
+    }
+
     @DeleteMapping("/api/comments/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(
@@ -48,6 +60,7 @@ public class CommentController {
             @AuthenticationPrincipal Jwt jwt
     ) {
         UUID userId = SecurityUtils.getUserId(jwt);
-        commentService.delete(id, userId);
+        boolean isAdmin = SecurityUtils.isAdmin(jwt);
+        commentService.delete(id, userId, isAdmin);
     }
 }

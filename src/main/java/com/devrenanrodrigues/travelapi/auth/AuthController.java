@@ -3,7 +3,9 @@ package com.devrenanrodrigues.travelapi.auth;
 import com.devrenanrodrigues.travelapi.auth.dto.AuthResponseDTO;
 import com.devrenanrodrigues.travelapi.auth.dto.GoogleLoginRequestDTO;
 import com.devrenanrodrigues.travelapi.auth.dto.LoginRequestDTO;
+import com.devrenanrodrigues.travelapi.auth.dto.RefreshTokenRequestDTO;
 import com.devrenanrodrigues.travelapi.auth.dto.RegisterRequestDTO;
+import com.devrenanrodrigues.travelapi.auth.dto.TokenResponseDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -36,5 +38,17 @@ public class AuthController {
     public ResponseEntity<AuthResponseDTO> loginWithGoogle(@Valid @RequestBody GoogleLoginRequestDTO request) {
         AuthResponseDTO response = authService.loginWithGoogle(request);
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<TokenResponseDTO> refresh(@Valid @RequestBody RefreshTokenRequestDTO request) {
+        TokenResponseDTO response = authService.refreshToken(request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@Valid @RequestBody RefreshTokenRequestDTO request) {
+        authService.logout(request);
+        return ResponseEntity.noContent().build();
     }
 }

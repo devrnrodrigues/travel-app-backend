@@ -4,7 +4,9 @@ import com.devrenanrodrigues.travelapi.auth.dto.AuthResponseDTO;
 import com.devrenanrodrigues.travelapi.auth.dto.GoogleLoginRequestDTO;
 import com.devrenanrodrigues.travelapi.auth.dto.GoogleUserInfo;
 import com.devrenanrodrigues.travelapi.auth.dto.LoginRequestDTO;
+import com.devrenanrodrigues.travelapi.auth.dto.RefreshTokenRequestDTO;
 import com.devrenanrodrigues.travelapi.auth.dto.RegisterRequestDTO;
+import com.devrenanrodrigues.travelapi.auth.dto.TokenResponseDTO;
 import com.devrenanrodrigues.travelapi.user.AuthProvider;
 import com.devrenanrodrigues.travelapi.user.Role;
 import com.devrenanrodrigues.travelapi.user.User;
@@ -25,6 +27,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
+    private final RefreshTokenService refreshTokenService;
 
     @Transactional
     public AuthResponseDTO loginWithGoogle(GoogleLoginRequestDTO request) {
@@ -35,7 +38,8 @@ public class AuthService {
                 .orElseGet(() -> createNewGoogleUser(userInfo));
 
         String token = jwtService.generateToken(user);
-        return AuthResponseDTO.of(token, jwtService.getExpirationSeconds(), UserResponseDTO.fromEntity(user));
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
+        return AuthResponseDTO.of(token, refreshToken.getToken(), jwtService.getExpirationSeconds(), UserResponseDTO.fromEntity(user));
     }
 
     @Transactional
@@ -56,10 +60,11 @@ public class AuthService {
 
         newUser = userRepository.saveAndFlush(newUser);
         String token = jwtService.generateToken(newUser);
-        return AuthResponseDTO.of(token, jwtService.getExpirationSeconds(), UserResponseDTO.fromEntity(newUser));
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(newUser);
+        return AuthResponseDTO.of(token, refreshToken.getToken(), jwtService.getExpirationSeconds(), UserResponseDTO.fromEntity(newUser));
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public AuthResponseDTO login(LoginRequestDTO request) {
         String email = request.email().trim().toLowerCase();
 
@@ -75,7 +80,21 @@ public class AuthService {
         }
 
         String token = jwtService.generateToken(user);
-        return AuthResponseDTO.of(token, jwtService.getExpirationSeconds(), UserResponseDTO.fromEntity(user));
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
+        return AuthResponseDTO.of(token, refreshToken.getToken(), jwtService.getExpirationSeconds(), UserResponseDTO.fromEntity(user));
+    }
+
+    @Transactional
+    public TokenResponseDTO refreshToken(RefreshTokenRequestDTO request) {
+        RefreshToken newRefreshToken = refreshTokenService.verifyAndRotate(request.refreshToken());
+        User user = newRefreshToken.getUser();
+        String newAccessToken = jwtService.generateToken(user);
+        return TokenResponseDTO.of(newAccessToken, newRefreshToken.getToken(), jwtService.getExpirationSeconds());
+    }
+
+    @Transactional
+    public void logout(RefreshTokenRequestDTO request) {
+        refreshTokenService.revokeToken(request.refreshToken());
     }
 
     private User updateExistingUser(User existingUser, GoogleUserInfo userInfo) {

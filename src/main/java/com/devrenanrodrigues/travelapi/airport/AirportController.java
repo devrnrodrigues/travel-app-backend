@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -43,6 +44,11 @@ public class AirportController {
     @GetMapping("/iata/{iataCode}")
     public AirportResponseDTO findByIataCode(@PathVariable String iataCode) {
         return airportService.findByIataCode(iataCode);
+    }
+
+    @PutMapping("/{id}")
+    public AirportResponseDTO update(@PathVariable UUID id, @RequestBody @Valid AirportRequestDTO dto) {
+        return airportService.update(id, dto);
     }
 
     @DeleteMapping("/{id}")

@@ -62,6 +62,29 @@ public class AirportService {
     }
 
     @Transactional
+    public AirportResponseDTO update(UUID id, AirportRequestDTO dto) {
+        Airport airport = airportRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Aeroporto não encontrado com o id: " + id));
+
+        String normalizedIata = dto.iataCode().trim().toUpperCase();
+        if (!airport.getIataCode().equalsIgnoreCase(normalizedIata)
+                && airportRepository.existsByIataCodeIgnoreCase(normalizedIata)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Código IATA já cadastrado para outro aeroporto: " + normalizedIata);
+        }
+
+        airport.setIataCode(normalizedIata);
+        airport.setName(dto.name().trim());
+        airport.setCity(dto.city().trim());
+        airport.setState(dto.state() != null ? dto.state().trim() : null);
+        airport.setCountry(dto.country().trim());
+        airport.setLatitude(dto.latitude());
+        airport.setLongitude(dto.longitude());
+
+        Airport saved = airportRepository.save(airport);
+        return AirportResponseDTO.fromEntity(saved);
+    }
+
+    @Transactional
     public void delete(UUID id) {
         if (!airportRepository.existsById(id)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Aeroporto não encontrado com o id: " + id);

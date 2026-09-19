@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -22,7 +23,13 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "comments")
+@Table(
+        name = "comments",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_comment_destination_user",
+                columnNames = {"destination_id", "user_id"}
+        )
+)
 @Getter
 @Setter
 @NoArgsConstructor

@@ -6,6 +6,7 @@ import com.devrenanrodrigues.travelapi.comment.dto.DestinationCommentsSummaryDTO
 import com.devrenanrodrigues.travelapi.destination.Destination;
 import com.devrenanrodrigues.travelapi.destination.DestinationRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,10 +41,13 @@ public class CommentService {
                 .content(dto.content().trim())
                 .build();
 
-        Comment saved = commentRepository.save(comment);
-        updateDestinationRatingAndCount(destination);
-
-        return CommentResponseDTO.fromEntity(saved);
+        try {
+            Comment saved = commentRepository.saveAndFlush(comment);
+            updateDestinationRatingAndCount(destination);
+            return CommentResponseDTO.fromEntity(saved);
+        } catch (DataIntegrityViolationException ex) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Você já avaliou este destino.");
+        }
     }
 
     @Transactional(readOnly = true)
@@ -111,7 +115,7 @@ public class CommentService {
 
     private void updateDestinationRatingAndCount(Destination destination) {
         Double avg = commentRepository.getAverageRatingByDestinationId(destination.getId());
-        int count = commentRepository.findByDestinationIdOrderByCreatedAtDesc(destination.getId()).size();
+        int count = (int) commentRepository.countByDestinationId(destination.getId());
         destination.setRating(avg != null ? Math.round(avg * 10.0) / 10.0 : 0.0);
         destination.setReviewCount(count);
         destinationRepository.save(destination);

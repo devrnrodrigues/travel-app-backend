@@ -17,6 +17,8 @@ public interface CommentRepository extends JpaRepository<Comment, UUID> {
 
     boolean existsByDestinationIdAndUserId(UUID destinationId, UUID userId);
 
+    long countByDestinationId(UUID destinationId);
+
     @Query("SELECT AVG(c.rating) FROM Comment c WHERE c.destination.id = :destinationId")
     Double getAverageRatingByDestinationId(@Param("destinationId") UUID destinationId);
 }

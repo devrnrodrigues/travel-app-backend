@@ -13,6 +13,7 @@ public record DestinationSummaryResponseDTO(
         String country,
         List<String> categories,
         String coverImageUrl,
+        String photoQuery,
         Double rating,
         Integer reviewCount
 ) {
@@ -25,6 +26,7 @@ public record DestinationSummaryResponseDTO(
                 destination.getCountry(),
                 destination.getCategories(),
                 destination.getCoverImageUrl(),
+                destination.getPhotoQuery(),
                 destination.getRating(),
                 destination.getReviewCount()
         );

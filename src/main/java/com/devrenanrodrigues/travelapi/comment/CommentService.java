@@ -5,6 +5,8 @@ import com.devrenanrodrigues.travelapi.comment.dto.CommentResponseDTO;
 import com.devrenanrodrigues.travelapi.comment.dto.DestinationCommentsSummaryDTO;
 import com.devrenanrodrigues.travelapi.destination.Destination;
 import com.devrenanrodrigues.travelapi.destination.DestinationRepository;
+import com.devrenanrodrigues.travelapi.user.User;
+import com.devrenanrodrigues.travelapi.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -13,7 +15,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +28,7 @@ public class CommentService {
 
     private final CommentRepository commentRepository;
     private final DestinationRepository destinationRepository;
+    private final UserRepository userRepository;
 
     @Transactional
     public CommentResponseDTO create(UUID destinationId, UUID userId, CommentRequestDTO dto) {
@@ -44,7 +52,10 @@ public class CommentService {
         try {
             Comment saved = commentRepository.saveAndFlush(comment);
             updateDestinationRatingAndCount(destination);
-            return CommentResponseDTO.fromEntity(saved);
+            User user = userRepository.findById(userId).orElse(null);
+            String userName = user != null ? (user.getFullName() != null && !user.getFullName().isBlank() ? user.getFullName() : user.getEmail()) : null;
+            String userAvatarUrl = user != null ? user.getAvatarUrl() : null;
+            return CommentResponseDTO.fromEntity(saved, userName, userAvatarUrl);
         } catch (DataIntegrityViolationException ex) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Você já avaliou este destino.");
         }
@@ -59,9 +70,23 @@ public class CommentService {
             );
         }
 
-        List<CommentResponseDTO> comments = commentRepository.findByDestinationIdOrderByCreatedAtDesc(destinationId)
+        List<Comment> commentsList = commentRepository.findByDestinationIdOrderByCreatedAtDesc(destinationId);
+        Set<UUID> userIds = commentsList.stream()
+                .map(Comment::getUserId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Map<UUID, User> userMap = userRepository.findAllById(userIds)
                 .stream()
-                .map(CommentResponseDTO::fromEntity)
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+
+        List<CommentResponseDTO> comments = commentsList.stream()
+                .map(c -> {
+                    User user = userMap.get(c.getUserId());
+                    String userName = user != null ? (user.getFullName() != null && !user.getFullName().isBlank() ? user.getFullName() : user.getEmail()) : null;
+                    String userAvatarUrl = user != null ? user.getAvatarUrl() : null;
+                    return CommentResponseDTO.fromEntity(c, userName, userAvatarUrl);
+                })
                 .toList();
 
         Double avg = commentRepository.getAverageRatingByDestinationId(destinationId);
@@ -93,7 +118,11 @@ public class CommentService {
             updateDestinationRatingAndCount(destination);
         }
 
-        return CommentResponseDTO.fromEntity(updated);
+        User user = userRepository.findById(comment.getUserId()).orElse(null);
+        String userName = user != null ? (user.getFullName() != null && !user.getFullName().isBlank() ? user.getFullName() : user.getEmail()) : null;
+        String userAvatarUrl = user != null ? user.getAvatarUrl() : null;
+
+        return CommentResponseDTO.fromEntity(updated, userName, userAvatarUrl);
     }
 
     @Transactional

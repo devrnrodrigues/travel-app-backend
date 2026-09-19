@@ -12,9 +12,11 @@ public record CommentResponseDTO(
         Integer rating,
         String content,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        String userName,
+        String userAvatarUrl
 ) {
-    public static CommentResponseDTO fromEntity(Comment comment) {
+    public static CommentResponseDTO fromEntity(Comment comment, String userName, String userAvatarUrl) {
         return new CommentResponseDTO(
                 comment.getId(),
                 comment.getUserId(),
@@ -22,7 +24,13 @@ public record CommentResponseDTO(
                 comment.getRating(),
                 comment.getContent(),
                 comment.getCreatedAt(),
-                comment.getUpdatedAt()
+                comment.getUpdatedAt(),
+                userName,
+                userAvatarUrl
         );
+    }
+
+    public static CommentResponseDTO fromEntity(Comment comment) {
+        return fromEntity(comment, null, null);
     }
 }

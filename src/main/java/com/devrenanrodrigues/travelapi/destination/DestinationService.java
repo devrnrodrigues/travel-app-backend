@@ -2,12 +2,15 @@ package com.devrenanrodrigues.travelapi.destination;
 
 import com.devrenanrodrigues.travelapi.airport.Airport;
 import com.devrenanrodrigues.travelapi.airport.AirportRepository;
+import com.devrenanrodrigues.travelapi.comment.CommentRepository;
 import com.devrenanrodrigues.travelapi.comment.CommentService;
 import com.devrenanrodrigues.travelapi.comment.dto.DestinationCommentsSummaryDTO;
 import com.devrenanrodrigues.travelapi.destination.dto.DestinationDetailResponseDTO;
 import com.devrenanrodrigues.travelapi.destination.dto.DestinationRequestDTO;
 import com.devrenanrodrigues.travelapi.destination.dto.DestinationResponseDTO;
 import com.devrenanrodrigues.travelapi.destination.dto.DestinationSummaryResponseDTO;
+import com.devrenanrodrigues.travelapi.favorite.FavoriteRepository;
+import com.devrenanrodrigues.travelapi.weather.DestinationWeatherRepository;
 import com.devrenanrodrigues.travelapi.weather.WeatherService;
 import com.devrenanrodrigues.travelapi.weather.dto.WeatherResponseDTO;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +32,9 @@ public class DestinationService {
     private final AirportRepository airportRepository;
     private final WeatherService weatherService;
     private final CommentService commentService;
+    private final CommentRepository commentRepository;
+    private final FavoriteRepository favoriteRepository;
+    private final DestinationWeatherRepository weatherRepository;
 
     @Transactional
     public DestinationResponseDTO create(DestinationRequestDTO dto) {
@@ -146,6 +152,19 @@ public class DestinationService {
         if (!destinationRepository.existsById(id)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Destino não encontrado com o id: " + id);
         }
+
+        if (commentRepository.existsByDestinationId(id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Não é possível excluir este destino pois ele possui avaliações vinculadas.");
+        }
+
+        if (favoriteRepository.existsByIdDestinationId(id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Não é possível excluir este destino pois ele foi favoritado por usuários.");
+        }
+
+        if (weatherRepository.existsById(id)) {
+            weatherRepository.deleteById(id);
+        }
+
         destinationRepository.deleteById(id);
     }
 }

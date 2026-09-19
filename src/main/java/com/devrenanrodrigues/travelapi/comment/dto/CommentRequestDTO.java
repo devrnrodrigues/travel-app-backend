@@ -4,6 +4,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 public record CommentRequestDTO(
         @NotNull(message = "A avaliação é obrigatória")
@@ -12,6 +13,7 @@ public record CommentRequestDTO(
         Integer rating,
 
         @NotBlank(message = "O comentário é obrigatório")
+        @Size(max = 1000, message = "O comentário deve ter no máximo 1000 caracteres.")
         String content
 ) {
 }

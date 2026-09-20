@@ -38,8 +38,18 @@ public class CommentController {
     }
 
     @GetMapping("/api/destinations/{destinationId}/comments")
-    public DestinationCommentsSummaryDTO findByDestinationId(@PathVariable UUID destinationId) {
-        return commentService.findByDestinationId(destinationId);
+    public DestinationCommentsSummaryDTO findByDestinationId(
+            @PathVariable UUID destinationId,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        UUID currentUserId = null;
+        if (jwt != null) {
+            try {
+                currentUserId = SecurityUtils.getUserId(jwt);
+            } catch (Exception ignored) {
+            }
+        }
+        return commentService.findByDestinationId(destinationId, currentUserId);
     }
 
     @PutMapping("/api/comments/{id}")
@@ -62,5 +72,14 @@ public class CommentController {
         UUID userId = SecurityUtils.getUserId(jwt);
         boolean isAdmin = SecurityUtils.isAdmin(jwt);
         commentService.delete(id, userId, isAdmin);
+    }
+
+    @PostMapping("/api/comments/{id}/helpful")
+    public CommentResponseDTO toggleHelpful(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        UUID userId = SecurityUtils.getUserId(jwt);
+        return commentService.toggleHelpful(id, userId);
     }
 }

@@ -14,9 +14,11 @@ public record CommentResponseDTO(
         Instant createdAt,
         Instant updatedAt,
         String userName,
-        String userAvatarUrl
+        String userAvatarUrl,
+        Integer helpfulCount,
+        Boolean isHelpful
 ) {
-    public static CommentResponseDTO fromEntity(Comment comment, String userName, String userAvatarUrl) {
+    public static CommentResponseDTO fromEntity(Comment comment, String userName, String userAvatarUrl, Boolean isHelpful) {
         return new CommentResponseDTO(
                 comment.getId(),
                 comment.getUserId(),
@@ -26,11 +28,17 @@ public record CommentResponseDTO(
                 comment.getCreatedAt(),
                 comment.getUpdatedAt(),
                 userName,
-                userAvatarUrl
+                userAvatarUrl,
+                comment.getHelpfulCount() != null ? comment.getHelpfulCount() : 0,
+                Boolean.TRUE.equals(isHelpful)
         );
     }
 
+    public static CommentResponseDTO fromEntity(Comment comment, String userName, String userAvatarUrl) {
+        return fromEntity(comment, userName, userAvatarUrl, false);
+    }
+
     public static CommentResponseDTO fromEntity(Comment comment) {
-        return fromEntity(comment, null, null);
+        return fromEntity(comment, null, null, false);
     }
 }

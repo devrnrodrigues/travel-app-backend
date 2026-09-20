@@ -17,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -27,6 +28,7 @@ import java.util.stream.Collectors;
 public class CommentService {
 
     private final CommentRepository commentRepository;
+    private final CommentHelpfulVoteRepository commentHelpfulVoteRepository;
     private final DestinationRepository destinationRepository;
     private final UserRepository userRepository;
 
@@ -47,6 +49,7 @@ public class CommentService {
                 .destination(destination)
                 .rating(dto.rating())
                 .content(dto.content().trim())
+                .helpfulCount(0)
                 .build();
 
         try {
@@ -55,7 +58,7 @@ public class CommentService {
             User user = userRepository.findById(userId).orElse(null);
             String userName = user != null ? (user.getFullName() != null && !user.getFullName().isBlank() ? user.getFullName() : user.getEmail()) : null;
             String userAvatarUrl = user != null ? user.getAvatarUrl() : null;
-            return CommentResponseDTO.fromEntity(saved, userName, userAvatarUrl);
+            return CommentResponseDTO.fromEntity(saved, userName, userAvatarUrl, false);
         } catch (DataIntegrityViolationException ex) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Você já avaliou este destino.");
         }
@@ -63,6 +66,11 @@ public class CommentService {
 
     @Transactional(readOnly = true)
     public DestinationCommentsSummaryDTO findByDestinationId(UUID destinationId) {
+        return findByDestinationId(destinationId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public DestinationCommentsSummaryDTO findByDestinationId(UUID destinationId, UUID currentUserId) {
         if (!destinationRepository.existsById(destinationId)) {
             throw new ResponseStatusException(
                     HttpStatus.NOT_FOUND,
@@ -80,12 +88,21 @@ public class CommentService {
                 .stream()
                 .collect(Collectors.toMap(User::getId, Function.identity()));
 
+        Set<UUID> commentIds = commentsList.stream()
+                .map(Comment::getId)
+                .collect(Collectors.toSet());
+
+        Set<UUID> votedCommentIds = (currentUserId != null && !commentIds.isEmpty())
+                ? commentHelpfulVoteRepository.findCommentIdsVotedByUser(currentUserId, commentIds)
+                : Set.of();
+
         List<CommentResponseDTO> comments = commentsList.stream()
                 .map(c -> {
                     User user = userMap.get(c.getUserId());
                     String userName = user != null ? (user.getFullName() != null && !user.getFullName().isBlank() ? user.getFullName() : user.getEmail()) : null;
                     String userAvatarUrl = user != null ? user.getAvatarUrl() : null;
-                    return CommentResponseDTO.fromEntity(c, userName, userAvatarUrl);
+                    boolean isHelpful = votedCommentIds.contains(c.getId());
+                    return CommentResponseDTO.fromEntity(c, userName, userAvatarUrl, isHelpful);
                 })
                 .toList();
 
@@ -121,8 +138,9 @@ public class CommentService {
         User user = userRepository.findById(comment.getUserId()).orElse(null);
         String userName = user != null ? (user.getFullName() != null && !user.getFullName().isBlank() ? user.getFullName() : user.getEmail()) : null;
         String userAvatarUrl = user != null ? user.getAvatarUrl() : null;
+        boolean isHelpful = commentHelpfulVoteRepository.existsByCommentIdAndUserId(updated.getId(), userId);
 
-        return CommentResponseDTO.fromEntity(updated, userName, userAvatarUrl);
+        return CommentResponseDTO.fromEntity(updated, userName, userAvatarUrl, isHelpful);
     }
 
     @Transactional
@@ -134,12 +152,49 @@ public class CommentService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não tem permissão para excluir este comentário.");
         }
 
+        commentHelpfulVoteRepository.deleteByCommentId(id);
+
         Destination destination = comment.getDestination();
         commentRepository.delete(comment);
 
         if (destination != null) {
             updateDestinationRatingAndCount(destination);
         }
+    }
+
+    @Transactional
+    public CommentResponseDTO toggleHelpful(UUID commentId, UUID userId) {
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Comentário não encontrado com o id: " + commentId
+                ));
+
+        Optional<CommentHelpfulVote> existingVote = commentHelpfulVoteRepository.findByCommentIdAndUserId(commentId, userId);
+        boolean isHelpful;
+        int currentCount = comment.getHelpfulCount() != null ? comment.getHelpfulCount() : 0;
+
+        if (existingVote.isPresent()) {
+            commentHelpfulVoteRepository.delete(existingVote.get());
+            comment.setHelpfulCount(Math.max(0, currentCount - 1));
+            isHelpful = false;
+        } else {
+            CommentHelpfulVote vote = CommentHelpfulVote.builder()
+                    .comment(comment)
+                    .userId(userId)
+                    .build();
+            commentHelpfulVoteRepository.save(vote);
+            comment.setHelpfulCount(currentCount + 1);
+            isHelpful = true;
+        }
+
+        Comment saved = commentRepository.save(comment);
+
+        User user = userRepository.findById(saved.getUserId()).orElse(null);
+        String userName = user != null ? (user.getFullName() != null && !user.getFullName().isBlank() ? user.getFullName() : user.getEmail()) : null;
+        String userAvatarUrl = user != null ? user.getAvatarUrl() : null;
+
+        return CommentResponseDTO.fromEntity(saved, userName, userAvatarUrl, isHelpful);
     }
 
     private void updateDestinationRatingAndCount(Destination destination) {

@@ -14,9 +14,20 @@ public record FavoriteResponseDTO(
         String destinationCountry,
         List<String> destinationCategories,
         String destinationCoverImageUrl,
+        Double destinationRating,
+        Integer destinationReviewCount,
+        Double rating,
+        Integer reviewCount,
         Instant createdAt
 ) {
     public static FavoriteResponseDTO fromEntity(Favorite favorite) {
+        Double rating = (favorite.getDestination() != null && favorite.getDestination().getRating() != null)
+                ? favorite.getDestination().getRating()
+                : 0.0;
+        Integer reviewCount = (favorite.getDestination() != null && favorite.getDestination().getReviewCount() != null)
+                ? favorite.getDestination().getReviewCount()
+                : 0;
+
         return new FavoriteResponseDTO(
                 favorite.getId().getUserId(),
                 favorite.getDestination().getId(),
@@ -25,6 +36,10 @@ public record FavoriteResponseDTO(
                 favorite.getDestination().getCountry(),
                 favorite.getDestination().getCategories(),
                 favorite.getDestination().getCoverImageUrl(),
+                rating,
+                reviewCount,
+                rating,
+                reviewCount,
                 favorite.getCreatedAt()
         );
     }

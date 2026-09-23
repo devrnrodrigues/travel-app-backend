@@ -46,6 +46,9 @@ public class User {
     @Column(name = "avatar_url", columnDefinition = "text")
     private String avatarUrl;
 
+    @Column(name = "avatar_public_id")
+    private String avatarPublicId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default

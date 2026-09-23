@@ -62,6 +62,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/flights/**").hasAnyRole("USER", "ADMIN")
                         .requestMatchers("/api/favorites/**").hasAnyRole("USER", "ADMIN")
                         .requestMatchers("/api/comments/**").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers("/api/users/**").hasAnyRole("USER", "ADMIN")
 
                         .anyRequest().authenticated()
                 )

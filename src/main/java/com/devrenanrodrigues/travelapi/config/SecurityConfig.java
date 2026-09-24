@@ -63,6 +63,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/favorites/**").hasAnyRole("USER", "ADMIN")
                         .requestMatchers("/api/comments/**").hasAnyRole("USER", "ADMIN")
                         .requestMatchers("/api/users/**").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers("/api/collections/**").hasAnyRole("USER", "ADMIN")
 
                         .anyRequest().authenticated()
                 )

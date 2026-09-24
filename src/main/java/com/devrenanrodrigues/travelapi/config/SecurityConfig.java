@@ -43,6 +43,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/destinations/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/destinations/*/weather").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/destinations/*/comments").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
 
                         .requestMatchers(HttpMethod.POST, "/api/destinations/*/comments").hasAnyRole("USER", "ADMIN")
@@ -50,6 +51,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/destinations/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/destinations/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/destinations/**").hasRole("ADMIN")
+
+                        .requestMatchers(HttpMethod.POST, "/api/categories/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/categories/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/categories/**").hasRole("ADMIN")
 
                         .requestMatchers(HttpMethod.PUT, "/api/destinations/*/weather").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/destinations/*/weather").hasRole("ADMIN")

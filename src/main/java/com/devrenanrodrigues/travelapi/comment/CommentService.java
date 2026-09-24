@@ -170,6 +170,19 @@ public class CommentService {
 
     @Transactional
     public CommentResponseDTO update(UUID id, UUID userId, boolean isAdmin, CommentRequestDTO dto) {
+        return update(id, userId, isAdmin, dto.rating(), dto.content(), null, null);
+    }
+
+    @Transactional
+    public CommentResponseDTO update(
+            UUID id,
+            UUID userId,
+            boolean isAdmin,
+            Integer rating,
+            String content,
+            List<UUID> keepPhotoIds,
+            List<MultipartFile> files
+    ) {
         Comment comment = commentRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comentário não encontrado com o id: " + id));
 
@@ -177,8 +190,66 @@ public class CommentService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não tem permissão para editar este comentário.");
         }
 
-        comment.setRating(dto.rating());
-        comment.setContent(dto.content().trim());
+        if (rating == null || rating < 1 || rating > 5) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A avaliação deve ser entre 1 e 5 estrelas.");
+        }
+
+        if (content == null || content.trim().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O comentário não pode ser vazio.");
+        }
+
+        if (content.trim().length() > 1000) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O comentário deve ter no máximo 1000 caracteres.");
+        }
+
+        comment.setRating(rating);
+        comment.setContent(content.trim());
+
+        List<CommentPhoto> existingPhotos = comment.getPhotos() != null ? comment.getPhotos() : new ArrayList<>();
+        List<CommentPhoto> photosToRemove = new ArrayList<>();
+
+        if (keepPhotoIds != null) {
+            for (CommentPhoto photo : existingPhotos) {
+                if (!keepPhotoIds.contains(photo.getId())) {
+                    photosToRemove.add(photo);
+                }
+            }
+        }
+
+        for (CommentPhoto photo : photosToRemove) {
+            if (photo.getPublicId() != null && !photo.getPublicId().isBlank()) {
+                cloudinaryService.delete(photo.getPublicId());
+            }
+            existingPhotos.remove(photo);
+        }
+
+        int newFilesCount = files != null ? files.size() : 0;
+        if (existingPhotos.size() + newFilesCount > 5) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O limite máximo é de 5 fotos por comentário.");
+        }
+
+        if (files != null && !files.isEmpty()) {
+            String folder = "travel-app/comments/" + comment.getDestination().getId();
+            for (MultipartFile file : files) {
+                if (file == null || file.isEmpty()) {
+                    continue;
+                }
+                CloudinaryUploadResponse uploadResponse = cloudinaryService.upload(file, folder);
+                CommentPhoto photo = CommentPhoto.builder()
+                        .comment(comment)
+                        .url(uploadResponse.url())
+                        .publicId(uploadResponse.publicId())
+                        .orderIndex(existingPhotos.size())
+                        .build();
+                existingPhotos.add(photo);
+            }
+        }
+
+        for (int i = 0; i < existingPhotos.size(); i++) {
+            existingPhotos.get(i).setOrderIndex(i);
+        }
+
+        comment.setPhotos(existingPhotos);
         Comment updated = commentRepository.save(comment);
 
         Destination destination = comment.getDestination();

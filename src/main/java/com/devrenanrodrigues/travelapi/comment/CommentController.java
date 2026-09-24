@@ -69,7 +69,7 @@ public class CommentController {
         return commentService.findByDestinationId(destinationId, currentUserId);
     }
 
-    @PutMapping("/api/comments/{id}")
+    @PutMapping(value = "/api/comments/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public CommentResponseDTO update(
             @PathVariable UUID id,
             @RequestBody @Valid CommentRequestDTO dto,
@@ -78,6 +78,20 @@ public class CommentController {
         UUID userId = SecurityUtils.getUserId(jwt);
         boolean isAdmin = SecurityUtils.isAdmin(jwt);
         return commentService.update(id, userId, isAdmin, dto);
+    }
+
+    @PutMapping(value = "/api/comments/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public CommentResponseDTO updateWithPhotos(
+            @PathVariable UUID id,
+            @RequestParam("rating") Integer rating,
+            @RequestParam("content") String content,
+            @RequestParam(value = "keepPhotoIds", required = false) List<UUID> keepPhotoIds,
+            @RequestParam(value = "files", required = false) List<MultipartFile> files,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        UUID userId = SecurityUtils.getUserId(jwt);
+        boolean isAdmin = SecurityUtils.isAdmin(jwt);
+        return commentService.update(id, userId, isAdmin, rating, content, keepPhotoIds, files);
     }
 
     @DeleteMapping("/api/comments/{id}")

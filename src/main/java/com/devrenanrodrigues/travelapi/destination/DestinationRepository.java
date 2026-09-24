@@ -12,13 +12,14 @@ import java.util.UUID;
 @Repository
 public interface DestinationRepository extends JpaRepository<Destination, UUID> {
 
-    @Query(value = "SELECT * FROM destinations d " +
-           "WHERE (:category IS NULL OR (d.categories IS NOT NULL AND :category ILIKE ANY(d.categories))) " +
-           "AND (:name IS NULL OR d.name ILIKE CONCAT('%', :name, '%'))",
-           countQuery = "SELECT count(*) FROM destinations d " +
-           "WHERE (:category IS NULL OR (d.categories IS NOT NULL AND :category ILIKE ANY(d.categories))) " +
-           "AND (:name IS NULL OR d.name ILIKE CONCAT('%', :name, '%'))",
-           nativeQuery = true)
+    @Query(value = "SELECT DISTINCT d FROM Destination d " +
+            "LEFT JOIN d.categories c " +
+            "WHERE (:category IS NULL OR LOWER(c.slug) = LOWER(:category) OR LOWER(c.name) = LOWER(:category)) " +
+            "AND (:name IS NULL OR LOWER(d.name) LIKE LOWER(CONCAT('%', :name, '%')))",
+            countQuery = "SELECT COUNT(DISTINCT d) FROM Destination d " +
+            "LEFT JOIN d.categories c " +
+            "WHERE (:category IS NULL OR LOWER(c.slug) = LOWER(:category) OR LOWER(c.name) = LOWER(:category)) " +
+            "AND (:name IS NULL OR LOWER(d.name) LIKE LOWER(CONCAT('%', :name, '%')))")
     Page<Destination> search(
             @Param("category") String category,
             @Param("name") String name,

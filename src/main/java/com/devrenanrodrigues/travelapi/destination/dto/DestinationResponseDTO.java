@@ -1,5 +1,6 @@
 package com.devrenanrodrigues.travelapi.destination.dto;
 
+import com.devrenanrodrigues.travelapi.category.Category;
 import com.devrenanrodrigues.travelapi.destination.AiStatus;
 import com.devrenanrodrigues.travelapi.destination.Destination;
 
@@ -41,6 +42,10 @@ public record DestinationResponseDTO(
             airportIata = destination.getNearestAirport().getIataCode();
         }
 
+        List<String> categoryNames = destination.getCategories() != null
+                ? destination.getCategories().stream().map(Category::getName).toList()
+                : List.of();
+
         return new DestinationResponseDTO(
                 destination.getId(),
                 airportId,
@@ -50,7 +55,7 @@ public record DestinationResponseDTO(
                 destination.getCity(),
                 destination.getState(),
                 destination.getCountry(),
-                destination.getCategories(),
+                categoryNames,
                 destination.getRating(),
                 destination.getReviewCount(),
                 destination.getAiStatus(),

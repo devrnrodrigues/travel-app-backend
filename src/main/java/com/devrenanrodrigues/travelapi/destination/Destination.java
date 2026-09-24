@@ -18,12 +18,18 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import com.devrenanrodrigues.travelapi.category.Category;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -61,12 +67,18 @@ public class Destination {
     @Column(length = 100, nullable = false)
     private String country;
 
-    @JdbcTypeCode(SqlTypes.ARRAY)
-    @Column(name = "categories", columnDefinition = "text[]")
-    private List<String> categories;
+    @BatchSize(size = 50)
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "destination_categories",
+            joinColumns = @JoinColumn(name = "destination_id"),
+            inverseJoinColumns = @JoinColumn(name = "category_id")
+    )
+    @Builder.Default
+    private Set<Category> categories = new HashSet<>();
 
     public String getCategory() {
-        return (categories != null && !categories.isEmpty()) ? categories.get(0) : null;
+        return (categories != null && !categories.isEmpty()) ? categories.iterator().next().getName() : null;
     }
 
     @Column(nullable = false, columnDefinition = "double precision default 0.0")

@@ -13,6 +13,8 @@ import com.devrenanrodrigues.travelapi.favorite.FavoriteRepository;
 import com.devrenanrodrigues.travelapi.weather.DestinationWeatherRepository;
 import com.devrenanrodrigues.travelapi.weather.WeatherService;
 import com.devrenanrodrigues.travelapi.weather.dto.WeatherResponseDTO;
+import com.devrenanrodrigues.travelapi.category.Category;
+import com.devrenanrodrigues.travelapi.category.CategoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -21,7 +23,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -35,6 +39,7 @@ public class DestinationService {
     private final CommentRepository commentRepository;
     private final FavoriteRepository favoriteRepository;
     private final DestinationWeatherRepository weatherRepository;
+    private final CategoryRepository categoryRepository;
 
     @Transactional
     public DestinationResponseDTO create(DestinationRequestDTO dto) {
@@ -60,7 +65,7 @@ public class DestinationService {
                 .city(dto.city().trim())
                 .state(dto.state() != null ? dto.state().trim() : null)
                 .country(trimmedCountry)
-                .categories(dto.categories() != null ? dto.categories().stream().map(String::trim).toList() : List.of())
+                .categories(resolveCategories(dto.categories()))
                 .rating(dto.rating() != null ? dto.rating() : 0.0)
                 .reviewCount(0)
                 .aiStatus(dto.aiStatus() != null ? dto.aiStatus() : AiStatus.PENDING)
@@ -106,7 +111,9 @@ public class DestinationService {
         destination.setCity(dto.city().trim());
         destination.setState(dto.state() != null ? dto.state().trim() : null);
         destination.setCountry(trimmedCountry);
-        destination.setCategories(dto.categories() != null ? dto.categories().stream().map(String::trim).toList() : List.of());
+        if (dto.categories() != null) {
+            destination.setCategories(resolveCategories(dto.categories()));
+        }
         if (dto.rating() != null) {
             destination.setRating(dto.rating());
         }
@@ -166,5 +173,21 @@ public class DestinationService {
         }
 
         destinationRepository.deleteById(id);
+    }
+
+    private Set<Category> resolveCategories(List<String> categoryInputs) {
+        if (categoryInputs == null || categoryInputs.isEmpty()) {
+            return new HashSet<>();
+        }
+        Set<Category> resolved = new HashSet<>();
+        for (String input : categoryInputs) {
+            if (input != null && !input.isBlank()) {
+                String clean = input.trim();
+                categoryRepository.findByNameIgnoreCase(clean)
+                        .or(() -> categoryRepository.findBySlugIgnoreCase(clean))
+                        .ifPresent(resolved::add);
+            }
+        }
+        return resolved;
     }
 }

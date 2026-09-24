@@ -1,5 +1,6 @@
 package com.devrenanrodrigues.travelapi.favorite.dto;
 
+import com.devrenanrodrigues.travelapi.category.Category;
 import com.devrenanrodrigues.travelapi.favorite.Favorite;
 
 import java.time.Instant;
@@ -28,13 +29,17 @@ public record FavoriteResponseDTO(
                 ? favorite.getDestination().getReviewCount()
                 : 0;
 
+        List<String> categories = (favorite.getDestination() != null && favorite.getDestination().getCategories() != null)
+                ? favorite.getDestination().getCategories().stream().map(Category::getName).toList()
+                : List.of();
+
         return new FavoriteResponseDTO(
                 favorite.getId().getUserId(),
                 favorite.getDestination().getId(),
                 favorite.getDestination().getName(),
                 favorite.getDestination().getCity(),
                 favorite.getDestination().getCountry(),
-                favorite.getDestination().getCategories(),
+                categories,
                 favorite.getDestination().getCoverImageUrl(),
                 rating,
                 reviewCount,

@@ -86,12 +86,13 @@ public class CommentController {
             @RequestParam("rating") Integer rating,
             @RequestParam("content") String content,
             @RequestParam(value = "keepPhotoIds", required = false) List<UUID> keepPhotoIds,
+            @RequestParam(value = "clearPhotos", required = false) Boolean clearPhotos,
             @RequestParam(value = "files", required = false) List<MultipartFile> files,
             @AuthenticationPrincipal Jwt jwt
     ) {
         UUID userId = SecurityUtils.getUserId(jwt);
         boolean isAdmin = SecurityUtils.isAdmin(jwt);
-        return commentService.update(id, userId, isAdmin, rating, content, keepPhotoIds, files);
+        return commentService.update(id, userId, isAdmin, rating, content, keepPhotoIds, clearPhotos, files);
     }
 
     @DeleteMapping("/api/comments/{id}")

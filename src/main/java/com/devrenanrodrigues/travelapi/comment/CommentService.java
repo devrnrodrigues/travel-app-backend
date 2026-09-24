@@ -170,7 +170,7 @@ public class CommentService {
 
     @Transactional
     public CommentResponseDTO update(UUID id, UUID userId, boolean isAdmin, CommentRequestDTO dto) {
-        return update(id, userId, isAdmin, dto.rating(), dto.content(), null, null);
+        return update(id, userId, isAdmin, dto.rating(), dto.content(), null, false, null);
     }
 
     @Transactional
@@ -181,6 +181,7 @@ public class CommentService {
             Integer rating,
             String content,
             List<UUID> keepPhotoIds,
+            Boolean clearPhotos,
             List<MultipartFile> files
     ) {
         Comment comment = commentRepository.findById(id)
@@ -208,7 +209,9 @@ public class CommentService {
         List<CommentPhoto> existingPhotos = comment.getPhotos() != null ? comment.getPhotos() : new ArrayList<>();
         List<CommentPhoto> photosToRemove = new ArrayList<>();
 
-        if (keepPhotoIds != null) {
+        if (Boolean.TRUE.equals(clearPhotos)) {
+            photosToRemove.addAll(existingPhotos);
+        } else if (keepPhotoIds != null) {
             for (CommentPhoto photo : existingPhotos) {
                 if (!keepPhotoIds.contains(photo.getId())) {
                     photosToRemove.add(photo);
@@ -220,8 +223,8 @@ public class CommentService {
             if (photo.getPublicId() != null && !photo.getPublicId().isBlank()) {
                 cloudinaryService.delete(photo.getPublicId());
             }
-            existingPhotos.remove(photo);
         }
+        existingPhotos.removeAll(photosToRemove);
 
         int newFilesCount = files != null ? files.size() : 0;
         if (existingPhotos.size() + newFilesCount > 5) {

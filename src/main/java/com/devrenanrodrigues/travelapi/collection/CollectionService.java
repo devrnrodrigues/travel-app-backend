@@ -89,10 +89,24 @@ public class CollectionService {
 
     @Transactional
     public CollectionResponseDTO updateCollection(UUID id, UUID userId, UpdateCollectionRequestDTO dto) {
-        Collection collection = collectionRepository.findByIdAndUserId(id, userId)
+        Collection collection = collectionRepository.findByIdAndUserIdWithPhotos(id, userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Coleção não encontrada."));
 
-        collection.setTitle(dto.title().trim());
+        if (dto.title() != null && !dto.title().isBlank()) {
+            collection.setTitle(dto.title().trim());
+        }
+
+        if (dto.deletePhotoIds() != null && !dto.deletePhotoIds().isEmpty() && collection.getPhotos() != null) {
+            List<CollectionPhoto> photosToDelete = collection.getPhotos().stream()
+                    .filter(p -> dto.deletePhotoIds().contains(p.getId()))
+                    .toList();
+
+            for (CollectionPhoto photo : photosToDelete) {
+                cloudinaryService.delete(photo.getPublicId());
+                collection.getPhotos().remove(photo);
+            }
+        }
+
         collection = collectionRepository.save(collection);
 
         return CollectionResponseDTO.fromEntity(collection);

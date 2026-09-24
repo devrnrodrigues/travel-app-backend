@@ -49,6 +49,12 @@ public class User {
     @Column(name = "avatar_public_id")
     private String avatarPublicId;
 
+    @Column(name = "bio", length = 150)
+    private String bio;
+
+    @Column(name = "nationality", length = 20)
+    private String nationality;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default

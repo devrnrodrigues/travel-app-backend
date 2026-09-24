@@ -12,6 +12,8 @@ public record UserResponseDTO(
         String email,
         String fullName,
         String avatarUrl,
+        String bio,
+        String nationality,
         AuthProvider provider,
         Role role,
         Instant createdAt
@@ -22,6 +24,8 @@ public record UserResponseDTO(
                 user.getEmail(),
                 user.getFullName(),
                 user.getAvatarUrl(),
+                user.getBio(),
+                user.getNationality(),
                 user.getProvider(),
                 user.getRole(),
                 user.getCreatedAt()

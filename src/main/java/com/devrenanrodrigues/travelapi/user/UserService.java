@@ -2,6 +2,7 @@ package com.devrenanrodrigues.travelapi.user;
 
 import com.devrenanrodrigues.travelapi.storage.CloudinaryService;
 import com.devrenanrodrigues.travelapi.storage.dto.CloudinaryUploadResponse;
+import com.devrenanrodrigues.travelapi.user.dto.UpdateProfileRequestDTO;
 import com.devrenanrodrigues.travelapi.user.dto.UserResponseDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -54,5 +55,24 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
         return UserResponseDTO.fromEntity(user);
+    }
+
+    @Transactional
+    public UserResponseDTO updateProfile(UUID userId, UpdateProfileRequestDTO dto) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
+
+        if (dto.fullName() != null && !dto.fullName().isBlank()) {
+            user.setFullName(dto.fullName().trim());
+        }
+        if (dto.bio() != null) {
+            user.setBio(dto.bio().trim());
+        }
+        if (dto.nationality() != null) {
+            user.setNationality(dto.nationality().trim());
+        }
+
+        User savedUser = userRepository.save(user);
+        return UserResponseDTO.fromEntity(savedUser);
     }
 }

@@ -1,7 +1,9 @@
 package com.devrenanrodrigues.travelapi.user;
 
 import com.devrenanrodrigues.travelapi.security.SecurityUtils;
+import com.devrenanrodrigues.travelapi.user.dto.UpdateProfileRequestDTO;
 import com.devrenanrodrigues.travelapi.user.dto.UserResponseDTO;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -9,6 +11,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -37,6 +41,16 @@ public class UserController {
     public ResponseEntity<UserResponseDTO> getMyProfile(@AuthenticationPrincipal Jwt jwt) {
         UUID userId = SecurityUtils.getUserId(jwt);
         UserResponseDTO response = userService.getProfile(userId);
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping({"/profile", "/me"})
+    public ResponseEntity<UserResponseDTO> updateProfile(
+            @Valid @RequestBody UpdateProfileRequestDTO dto,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        UUID userId = SecurityUtils.getUserId(jwt);
+        UserResponseDTO response = userService.updateProfile(userId, dto);
         return ResponseEntity.ok(response);
     }
 }

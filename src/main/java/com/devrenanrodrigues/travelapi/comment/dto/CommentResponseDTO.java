@@ -3,6 +3,8 @@ package com.devrenanrodrigues.travelapi.comment.dto;
 import com.devrenanrodrigues.travelapi.comment.Comment;
 
 import java.time.Instant;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 public record CommentResponseDTO(
@@ -16,9 +18,14 @@ public record CommentResponseDTO(
         String userName,
         String userAvatarUrl,
         Integer helpfulCount,
-        Boolean isHelpful
+        Boolean isHelpful,
+        List<CommentPhotoResponseDTO> photos
 ) {
     public static CommentResponseDTO fromEntity(Comment comment, String userName, String userAvatarUrl, Boolean isHelpful) {
+        List<CommentPhotoResponseDTO> photoDTOs = comment.getPhotos() != null
+                ? comment.getPhotos().stream().map(CommentPhotoResponseDTO::fromEntity).toList()
+                : Collections.emptyList();
+
         return new CommentResponseDTO(
                 comment.getId(),
                 comment.getUserId(),
@@ -30,7 +37,8 @@ public record CommentResponseDTO(
                 userName,
                 userAvatarUrl,
                 comment.getHelpfulCount() != null ? comment.getHelpfulCount() : 0,
-                Boolean.TRUE.equals(isHelpful)
+                Boolean.TRUE.equals(isHelpful),
+                photoDTOs
         );
     }
 

@@ -5,6 +5,8 @@ import com.devrenanrodrigues.travelapi.comment.dto.CommentResponseDTO;
 import com.devrenanrodrigues.travelapi.comment.dto.DestinationCommentsSummaryDTO;
 import com.devrenanrodrigues.travelapi.destination.Destination;
 import com.devrenanrodrigues.travelapi.destination.DestinationRepository;
+import com.devrenanrodrigues.travelapi.storage.CloudinaryService;
+import com.devrenanrodrigues.travelapi.storage.dto.CloudinaryUploadResponse;
 import com.devrenanrodrigues.travelapi.user.User;
 import com.devrenanrodrigues.travelapi.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -12,8 +14,10 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -31,9 +35,37 @@ public class CommentService {
     private final CommentHelpfulVoteRepository commentHelpfulVoteRepository;
     private final DestinationRepository destinationRepository;
     private final UserRepository userRepository;
+    private final CloudinaryService cloudinaryService;
 
     @Transactional
     public CommentResponseDTO create(UUID destinationId, UUID userId, CommentRequestDTO dto) {
+        return create(destinationId, userId, dto.rating(), dto.content(), null);
+    }
+
+    @Transactional
+    public CommentResponseDTO create(
+            UUID destinationId,
+            UUID userId,
+            Integer rating,
+            String content,
+            List<MultipartFile> files
+    ) {
+        if (rating == null || rating < 1 || rating > 5) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A avaliação deve ser entre 1 e 5 estrelas.");
+        }
+
+        if (content == null || content.trim().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O comentário não pode ser vazio.");
+        }
+
+        if (content.trim().length() > 1000) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O comentário deve ter no máximo 1000 caracteres.");
+        }
+
+        if (files != null && files.size() > 5) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O limite máximo é de 5 fotos por comentário.");
+        }
+
         if (commentRepository.existsByDestinationIdAndUserId(destinationId, userId)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Você já avaliou este destino.");
         }
@@ -47,10 +79,29 @@ public class CommentService {
         Comment comment = Comment.builder()
                 .userId(userId)
                 .destination(destination)
-                .rating(dto.rating())
-                .content(dto.content().trim())
+                .rating(rating)
+                .content(content.trim())
                 .helpfulCount(0)
+                .photos(new ArrayList<>())
                 .build();
+
+        if (files != null && !files.isEmpty()) {
+            String folder = "travel-app/comments/" + destinationId;
+            int order = 0;
+            for (MultipartFile file : files) {
+                if (file == null || file.isEmpty()) {
+                    continue;
+                }
+                CloudinaryUploadResponse uploadResponse = cloudinaryService.upload(file, folder);
+                CommentPhoto photo = CommentPhoto.builder()
+                        .comment(comment)
+                        .url(uploadResponse.url())
+                        .publicId(uploadResponse.publicId())
+                        .orderIndex(order++)
+                        .build();
+                comment.getPhotos().add(photo);
+            }
+        }
 
         try {
             Comment saved = commentRepository.saveAndFlush(comment);
@@ -150,6 +201,14 @@ public class CommentService {
 
         if (!isAdmin && !comment.getUserId().equals(userId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não tem permissão para excluir este comentário.");
+        }
+
+        if (comment.getPhotos() != null) {
+            for (CommentPhoto photo : comment.getPhotos()) {
+                if (photo.getPublicId() != null && !photo.getPublicId().isBlank()) {
+                    cloudinaryService.delete(photo.getPublicId());
+                }
+            }
         }
 
         commentHelpfulVoteRepository.deleteByCommentId(id);

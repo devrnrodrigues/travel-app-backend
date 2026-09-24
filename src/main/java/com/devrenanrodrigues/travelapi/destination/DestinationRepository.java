@@ -12,14 +12,17 @@ import java.util.UUID;
 @Repository
 public interface DestinationRepository extends JpaRepository<Destination, UUID> {
 
-    @Query(value = "SELECT DISTINCT d FROM Destination d " +
-            "LEFT JOIN d.categories c " +
-            "WHERE (:category IS NULL OR LOWER(c.slug) = LOWER(:category) OR LOWER(c.name) = LOWER(:category)) " +
-            "AND (:name IS NULL OR LOWER(d.name) LIKE LOWER(CONCAT('%', :name, '%')))",
-            countQuery = "SELECT COUNT(DISTINCT d) FROM Destination d " +
-            "LEFT JOIN d.categories c " +
-            "WHERE (:category IS NULL OR LOWER(c.slug) = LOWER(:category) OR LOWER(c.name) = LOWER(:category)) " +
-            "AND (:name IS NULL OR LOWER(d.name) LIKE LOWER(CONCAT('%', :name, '%')))")
+    @Query(value = "SELECT DISTINCT d.* FROM destinations d " +
+            "LEFT JOIN destination_categories dc ON d.id = dc.destination_id " +
+            "LEFT JOIN categories c ON dc.category_id = c.id " +
+            "WHERE (CAST(:category AS text) IS NULL OR c.slug ILIKE CAST(:category AS text) OR c.name ILIKE CAST(:category AS text)) " +
+            "AND (CAST(:name AS text) IS NULL OR d.name ILIKE CONCAT('%', CAST(:name AS text), '%'))",
+            countQuery = "SELECT COUNT(DISTINCT d.id) FROM destinations d " +
+            "LEFT JOIN destination_categories dc ON d.id = dc.destination_id " +
+            "LEFT JOIN categories c ON dc.category_id = c.id " +
+            "WHERE (CAST(:category AS text) IS NULL OR c.slug ILIKE CAST(:category AS text) OR c.name ILIKE CAST(:category AS text)) " +
+            "AND (CAST(:name AS text) IS NULL OR d.name ILIKE CONCAT('%', CAST(:name AS text), '%'))",
+            nativeQuery = true)
     Page<Destination> search(
             @Param("category") String category,
             @Param("name") String name,

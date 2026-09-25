@@ -71,6 +71,16 @@ public class Destination {
     @Column(length = 100, nullable = false)
     private String country;
 
+    @Column(name = "geoname_id", unique = true)
+    private Long geonameId;
+
+    @Column(name = "feature_code", length = 10)
+    private String featureCode;
+
+    @Column(name = "population", nullable = false)
+    @Builder.Default
+    private Long population = 0L;
+
     @BatchSize(size = 50)
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(

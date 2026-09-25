@@ -40,12 +40,10 @@ public record DestinationRequestDTO(
         @NotNull
         Double longitude,
 
-        @NotBlank
         @Size(max = 150)
         String photoQuery,
 
         String coverImageUrl,
-        List<String> galleryUrls,
         String aiSummary,
         String aiCostEstimates
 ) {

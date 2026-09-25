@@ -25,11 +25,12 @@ public record DestinationResponseDTO(
         Double longitude,
         String photoQuery,
         String coverImageUrl,
-        List<String> galleryUrls,
+        List<DestinationImageResponseDTO> images,
         String aiSummary,
         String aiCostEstimates,
         Instant aiCachedAt,
-        Instant createdAt
+        Instant createdAt,
+        Instant updatedAt
 ) {
     public static DestinationResponseDTO fromEntity(Destination destination) {
         UUID airportId = null;
@@ -44,6 +45,10 @@ public record DestinationResponseDTO(
 
         List<String> categoryNames = destination.getCategories() != null
                 ? destination.getCategories().stream().map(Category::getName).toList()
+                : List.of();
+
+        List<DestinationImageResponseDTO> imageDTOs = destination.getImages() != null
+                ? destination.getImages().stream().map(DestinationImageResponseDTO::fromEntity).toList()
                 : List.of();
 
         return new DestinationResponseDTO(
@@ -63,11 +68,12 @@ public record DestinationResponseDTO(
                 destination.getLongitude(),
                 destination.getPhotoQuery(),
                 destination.getCoverImageUrl(),
-                destination.getGalleryUrls(),
+                imageDTOs,
                 destination.getAiSummary(),
                 destination.getAiCostEstimates(),
                 destination.getAiCachedAt(),
-                destination.getCreatedAt()
+                destination.getCreatedAt(),
+                destination.getUpdatedAt()
         );
     }
 }

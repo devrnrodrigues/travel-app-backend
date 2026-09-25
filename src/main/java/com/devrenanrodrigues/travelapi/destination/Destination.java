@@ -1,6 +1,8 @@
 package com.devrenanrodrigues.travelapi.destination;
 
 import com.devrenanrodrigues.travelapi.airport.Airport;
+import com.devrenanrodrigues.travelapi.category.Category;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -10,7 +12,10 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
@@ -18,15 +23,14 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import com.devrenanrodrigues.travelapi.category.Category;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
 import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -100,15 +104,15 @@ public class Destination {
     @Column(nullable = false)
     private Double longitude;
 
-    @Column(name = "photo_query", length = 150, nullable = false)
+    @Column(name = "photo_query", length = 150)
     private String photoQuery;
 
     @Column(name = "cover_image_url", columnDefinition = "text")
     private String coverImageUrl;
 
-    @JdbcTypeCode(SqlTypes.ARRAY)
-    @Column(name = "gallery_urls", columnDefinition = "text[]")
-    private List<String> galleryUrls;
+    @OneToMany(mappedBy = "destination", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<DestinationImage> images = new ArrayList<>();
 
     @Column(name = "ai_summary", columnDefinition = "text")
     private String aiSummary;
@@ -123,4 +127,8 @@ public class Destination {
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
 }

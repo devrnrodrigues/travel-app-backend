@@ -21,7 +21,7 @@ public record DestinationDetailResponseDTO(
         String description,
         String aiCostEstimates,
         AirportResponseDTO nearestAirport,
-        List<String> galleryUrls,
+        List<DestinationImageResponseDTO> images,
         WeatherResponseDTO weather,
         DestinationCommentsSummaryDTO comments
 ) {
@@ -30,6 +30,10 @@ public record DestinationDetailResponseDTO(
             WeatherResponseDTO weather,
             DestinationCommentsSummaryDTO comments
     ) {
+        List<DestinationImageResponseDTO> imageDTOs = destination.getImages() != null
+                ? destination.getImages().stream().map(DestinationImageResponseDTO::fromEntity).toList()
+                : List.of();
+
         return new DestinationDetailResponseDTO(
                 destination.getId(),
                 destination.getName(),
@@ -43,7 +47,7 @@ public record DestinationDetailResponseDTO(
                 destination.getAiSummary(),
                 destination.getAiCostEstimates(),
                 destination.getNearestAirport() != null ? AirportResponseDTO.fromEntity(destination.getNearestAirport()) : null,
-                destination.getGalleryUrls(),
+                imageDTOs,
                 weather,
                 comments
         );

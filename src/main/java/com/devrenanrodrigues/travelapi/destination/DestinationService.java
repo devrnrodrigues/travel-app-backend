@@ -71,9 +71,8 @@ public class DestinationService {
                 .aiStatus(dto.aiStatus() != null ? dto.aiStatus() : AiStatus.PENDING)
                 .latitude(dto.latitude())
                 .longitude(dto.longitude())
-                .photoQuery(dto.photoQuery().trim())
+                .photoQuery(dto.photoQuery() != null ? dto.photoQuery().trim() : null)
                 .coverImageUrl(dto.coverImageUrl())
-                .galleryUrls(dto.galleryUrls())
                 .aiSummary(dto.aiSummary())
                 .aiCostEstimates(dto.aiCostEstimates())
                 .build();
@@ -122,9 +121,8 @@ public class DestinationService {
         }
         destination.setLatitude(dto.latitude());
         destination.setLongitude(dto.longitude());
-        destination.setPhotoQuery(dto.photoQuery().trim());
+        destination.setPhotoQuery(dto.photoQuery() != null ? dto.photoQuery().trim() : null);
         destination.setCoverImageUrl(dto.coverImageUrl());
-        destination.setGalleryUrls(dto.galleryUrls());
         destination.setAiSummary(dto.aiSummary());
         destination.setAiCostEstimates(dto.aiCostEstimates());
 

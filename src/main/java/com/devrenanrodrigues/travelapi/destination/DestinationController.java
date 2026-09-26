@@ -45,7 +45,7 @@ public class DestinationController {
     public Page<DestinationSummaryResponseDTO> findAll(
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String name,
-            @PageableDefault(size = 10, page = 0, sort = "name") Pageable pageable
+            @PageableDefault(size = 10, page = 0) Pageable pageable
     ) {
         return destinationService.findAll(category, name, pageable);
     }

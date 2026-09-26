@@ -7,10 +7,9 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
-import java.util.UUID;
-
 public record DestinationRequestDTO(
-        UUID nearestAirportId,
+        @Size(max = 3)
+        String iata,
 
         @NotBlank
         @Size(max = 150)
@@ -44,7 +43,9 @@ public record DestinationRequestDTO(
         String photoQuery,
 
         String coverImageUrl,
-        String aiSummary,
-        String aiCostEstimates
+        List<String> aiSummary,
+        String aiCostEstimates,
+        Long approximatePopulation,
+        Integer popularity
 ) {
 }

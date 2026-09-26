@@ -10,8 +10,7 @@ import java.util.UUID;
 
 public record DestinationResponseDTO(
         UUID id,
-        UUID nearestAirportId,
-        String nearestAirportName,
+        String iata,
         String nearestAirportIata,
         String name,
         String city,
@@ -26,23 +25,15 @@ public record DestinationResponseDTO(
         String photoQuery,
         String coverImageUrl,
         List<DestinationImageResponseDTO> images,
-        String aiSummary,
+        List<String> aiSummary,
         String aiCostEstimates,
+        Long approximatePopulation,
+        Integer popularity,
         Instant aiCachedAt,
         Instant createdAt,
         Instant updatedAt
 ) {
     public static DestinationResponseDTO fromEntity(Destination destination) {
-        UUID airportId = null;
-        String airportName = null;
-        String airportIata = null;
-
-        if (destination.getNearestAirport() != null) {
-            airportId = destination.getNearestAirport().getId();
-            airportName = destination.getNearestAirport().getName();
-            airportIata = destination.getNearestAirport().getIataCode();
-        }
-
         List<String> categoryNames = destination.getCategories() != null
                 ? destination.getCategories().stream().map(Category::getName).toList()
                 : List.of();
@@ -53,9 +44,8 @@ public record DestinationResponseDTO(
 
         return new DestinationResponseDTO(
                 destination.getId(),
-                airportId,
-                airportName,
-                airportIata,
+                destination.getIata(),
+                destination.getIata(),
                 destination.getName(),
                 destination.getCity(),
                 destination.getState(),
@@ -71,6 +61,8 @@ public record DestinationResponseDTO(
                 imageDTOs,
                 destination.getAiSummary(),
                 destination.getAiCostEstimates(),
+                destination.getApproximatePopulation(),
+                destination.getPopularity(),
                 destination.getAiCachedAt(),
                 destination.getCreatedAt(),
                 destination.getUpdatedAt()

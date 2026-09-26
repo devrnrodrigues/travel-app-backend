@@ -1,7 +1,7 @@
 package com.devrenanrodrigues.travelapi.destination;
 
-import com.devrenanrodrigues.travelapi.airport.Airport;
 import com.devrenanrodrigues.travelapi.airport.AirportRepository;
+import com.devrenanrodrigues.travelapi.airport.dto.AirportResponseDTO;
 import com.devrenanrodrigues.travelapi.comment.CommentRepository;
 import com.devrenanrodrigues.travelapi.comment.CommentService;
 import com.devrenanrodrigues.travelapi.comment.dto.DestinationCommentsSummaryDTO;
@@ -50,17 +50,8 @@ public class DestinationService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Destino já cadastrado para este país: " + trimmedName);
         }
 
-        Airport nearestAirport = null;
-        if (dto.nearestAirportId() != null) {
-            nearestAirport = airportRepository.findById(dto.nearestAirportId())
-                    .orElseThrow(() -> new ResponseStatusException(
-                            HttpStatus.NOT_FOUND,
-                            "Aeroporto mais próximo não encontrado com o id: " + dto.nearestAirportId()
-                    ));
-        }
-
         Destination destination = Destination.builder()
-                .nearestAirport(nearestAirport)
+                .iata(dto.iata() != null ? dto.iata().trim().toUpperCase() : null)
                 .name(trimmedName)
                 .city(dto.city().trim())
                 .state(dto.state() != null ? dto.state().trim() : null)
@@ -75,6 +66,8 @@ public class DestinationService {
                 .coverImageUrl(dto.coverImageUrl())
                 .aiSummary(dto.aiSummary())
                 .aiCostEstimates(dto.aiCostEstimates())
+                .approximatePopulation(dto.approximatePopulation())
+                .popularity(dto.popularity() != null ? dto.popularity() : 0)
                 .build();
 
         Destination saved = destinationRepository.save(destination);
@@ -96,16 +89,9 @@ public class DestinationService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Destino já cadastrado para este país: " + trimmedName);
         }
 
-        Airport nearestAirport = destination.getNearestAirport();
-        if (dto.nearestAirportId() != null) {
-            nearestAirport = airportRepository.findById(dto.nearestAirportId())
-                    .orElseThrow(() -> new ResponseStatusException(
-                            HttpStatus.NOT_FOUND,
-                            "Aeroporto mais próximo não encontrado com o id: " + dto.nearestAirportId()
-                    ));
+        if (dto.iata() != null) {
+            destination.setIata(dto.iata().trim().toUpperCase());
         }
-
-        destination.setNearestAirport(nearestAirport);
         destination.setName(trimmedName);
         destination.setCity(dto.city().trim());
         destination.setState(dto.state() != null ? dto.state().trim() : null);
@@ -125,6 +111,10 @@ public class DestinationService {
         destination.setCoverImageUrl(dto.coverImageUrl());
         destination.setAiSummary(dto.aiSummary());
         destination.setAiCostEstimates(dto.aiCostEstimates());
+        destination.setApproximatePopulation(dto.approximatePopulation());
+        if (dto.popularity() != null) {
+            destination.setPopularity(dto.popularity());
+        }
 
         return DestinationResponseDTO.fromEntity(destination);
     }
@@ -149,7 +139,14 @@ public class DestinationService {
 
         DestinationCommentsSummaryDTO comments = commentService.findByDestinationId(id);
 
-        return DestinationDetailResponseDTO.of(destination, weather, comments);
+        AirportResponseDTO nearestAirport = null;
+        if (destination.getIata() != null && !destination.getIata().isBlank()) {
+            nearestAirport = airportRepository.findByIataCodeIgnoreCase(destination.getIata())
+                    .map(AirportResponseDTO::fromEntity)
+                    .orElse(null);
+        }
+
+        return DestinationDetailResponseDTO.of(destination, nearestAirport, weather, comments);
     }
 
     @Transactional

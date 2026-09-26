@@ -1,6 +1,5 @@
 package com.devrenanrodrigues.travelapi.destination;
 
-import com.devrenanrodrigues.travelapi.airport.Airport;
 import com.devrenanrodrigues.travelapi.category.Category;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -55,9 +54,8 @@ public class Destination {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "nearest_airport_id")
-    private Airport nearestAirport;
+    @Column(name = "iata", length = 3)
+    private String iata;
 
     @Column(length = 150, nullable = false)
     private String name;
@@ -71,15 +69,12 @@ public class Destination {
     @Column(length = 100, nullable = false)
     private String country;
 
-    @Column(name = "geoname_id", unique = true)
-    private Long geonameId;
+    @Column(name = "approximate_population")
+    private Long approximatePopulation;
 
-    @Column(name = "feature_code", length = 10)
-    private String featureCode;
-
-    @Column(name = "population", nullable = false)
+    @Column(name = "popularity")
     @Builder.Default
-    private Long population = 0L;
+    private Integer popularity = 0;
 
     @BatchSize(size = 50)
     @ManyToMany(fetch = FetchType.LAZY)
@@ -124,8 +119,9 @@ public class Destination {
     @Builder.Default
     private List<DestinationImage> images = new ArrayList<>();
 
-    @Column(name = "ai_summary", columnDefinition = "text")
-    private String aiSummary;
+    @Column(name = "ai_summary", columnDefinition = "text[]")
+    @Builder.Default
+    private List<String> aiSummary = new ArrayList<>();
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "ai_cost_estimates", columnDefinition = "jsonb")

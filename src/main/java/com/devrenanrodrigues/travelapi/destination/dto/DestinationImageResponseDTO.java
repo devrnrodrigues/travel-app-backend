@@ -10,7 +10,12 @@ public record DestinationImageResponseDTO(
         String photographer,
         String photographerUrl,
         boolean isCover,
-        int position
+        int position,
+        Long pexelsId,
+        String alt,
+        Integer width,
+        Integer height,
+        String avgColor
 ) {
     public static DestinationImageResponseDTO fromEntity(DestinationImage image) {
         if (image == null) return null;
@@ -20,7 +25,12 @@ public record DestinationImageResponseDTO(
                 image.getPhotographer(),
                 image.getPhotographerUrl(),
                 image.isCover(),
-                image.getPosition()
+                image.getPosition(),
+                image.getPexelsId(),
+                image.getAlt(),
+                image.getWidth(),
+                image.getHeight(),
+                image.getAvgColor()
         );
     }
 }

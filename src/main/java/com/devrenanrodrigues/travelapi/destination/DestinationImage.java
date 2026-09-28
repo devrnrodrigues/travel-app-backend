@@ -54,6 +54,21 @@ public class DestinationImage {
     @Builder.Default
     private int position = 0;
 
+    @Column(name = "pexels_id")
+    private Long pexelsId;
+
+    @Column(columnDefinition = "TEXT")
+    private String alt;
+
+    @Column(name = "width")
+    private Integer width;
+
+    @Column(name = "height")
+    private Integer height;
+
+    @Column(name = "avg_color", length = 10)
+    private String avgColor;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

@@ -29,8 +29,8 @@ public record FavoriteResponseDTO(
                 ? favorite.getDestination().getReviewCount()
                 : 0;
 
-        List<String> categories = (favorite.getDestination() != null && favorite.getDestination().getCategories() != null)
-                ? favorite.getDestination().getCategories().stream().map(Category::getName).toList()
+        List<String> categories = (favorite.getDestination() != null)
+                ? favorite.getDestination().getAllCategoryNames()
                 : List.of();
 
         return new FavoriteResponseDTO(

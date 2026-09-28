@@ -65,6 +65,7 @@ public class CategoryService {
                 .bgImageUrl(dto.bgImageUrl() != null ? dto.bgImageUrl().trim() : null)
                 .sortOrder(dto.sortOrder() != null ? dto.sortOrder() : 0)
                 .active(dto.active() != null ? dto.active() : true)
+                .isPrimary(dto.isPrimary() != null ? dto.isPrimary() : false)
                 .build();
 
         Category saved = categoryRepository.save(category);
@@ -99,6 +100,9 @@ public class CategoryService {
         }
         if (dto.active() != null) {
             category.setActive(dto.active());
+        }
+        if (dto.isPrimary() != null) {
+            category.setIsPrimary(dto.isPrimary());
         }
 
         return CategoryResponseDTO.fromEntity(category);

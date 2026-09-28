@@ -12,7 +12,8 @@ public record CategoryResponseDTO(
         String accentColor,
         String bgImageUrl,
         Integer sortOrder,
-        Boolean active
+        Boolean active,
+        Boolean isPrimary
 ) {
     public static CategoryResponseDTO fromEntity(Category category) {
         return new CategoryResponseDTO(
@@ -23,7 +24,8 @@ public record CategoryResponseDTO(
                 category.getAccentColor(),
                 category.getBgImageUrl(),
                 category.getSortOrder(),
-                category.getActive()
+                category.getActive(),
+                category.getIsPrimary()
         );
     }
 }

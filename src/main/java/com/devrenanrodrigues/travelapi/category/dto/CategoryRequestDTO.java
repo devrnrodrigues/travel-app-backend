@@ -21,6 +21,7 @@ public record CategoryRequestDTO(
 
         Integer sortOrder,
 
-        Boolean active
+        Boolean active,
+        Boolean isPrimary
 ) {
 }

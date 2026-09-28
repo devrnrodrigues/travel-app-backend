@@ -54,6 +54,10 @@ public class Category {
     @Builder.Default
     private Boolean active = true;
 
+    @Column(name = "is_primary", nullable = false)
+    @Builder.Default
+    private Boolean isPrimary = false;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

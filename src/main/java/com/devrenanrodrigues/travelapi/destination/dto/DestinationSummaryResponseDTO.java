@@ -19,9 +19,7 @@ public record DestinationSummaryResponseDTO(
         Integer reviewCount
 ) {
     public static DestinationSummaryResponseDTO fromEntity(Destination destination) {
-        List<String> categoryNames = destination.getCategories() != null
-                ? destination.getCategories().stream().map(Category::getName).toList()
-                : List.of();
+        List<String> categoryNames = destination.getAllCategoryNames();
 
         return new DestinationSummaryResponseDTO(
                 destination.getId(),

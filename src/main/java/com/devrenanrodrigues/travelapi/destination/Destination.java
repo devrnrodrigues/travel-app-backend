@@ -76,6 +76,14 @@ public class Destination {
     @Builder.Default
     private Integer popularity = 0;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "primary_category_id", foreignKey = @jakarta.persistence.ForeignKey(jakarta.persistence.ConstraintMode.NO_CONSTRAINT))
+    private Category primaryCategory;
+
+    @Column(name = "is_primary_flag", nullable = false)
+    @Builder.Default
+    private Boolean isPrimaryFlag = true;
+
     @BatchSize(size = 50)
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
@@ -87,7 +95,25 @@ public class Destination {
     private Set<Category> categories = new HashSet<>();
 
     public String getCategory() {
+        if (primaryCategory != null && primaryCategory.getName() != null) {
+            return primaryCategory.getName();
+        }
         return (categories != null && !categories.isEmpty()) ? categories.iterator().next().getName() : null;
+    }
+
+    public List<String> getAllCategoryNames() {
+        List<String> list = new ArrayList<>();
+        if (primaryCategory != null && primaryCategory.getName() != null) {
+            list.add(primaryCategory.getName());
+        }
+        if (categories != null) {
+            for (Category cat : categories) {
+                if (cat != null && cat.getName() != null && !list.contains(cat.getName())) {
+                    list.add(cat.getName());
+                }
+            }
+        }
+        return list;
     }
 
     @Column(nullable = false, columnDefinition = "double precision default 0.0")

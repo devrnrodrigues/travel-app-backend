@@ -50,13 +50,16 @@ public class DestinationService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Destino já cadastrado para este país: " + trimmedName);
         }
 
+        ResolvedCategories resolved = resolveCategories(dto.primaryCategory(), dto.categories());
+
         Destination destination = Destination.builder()
                 .iata(dto.iata() != null ? dto.iata().trim().toUpperCase() : null)
                 .name(trimmedName)
                 .city(dto.city().trim())
                 .state(dto.state() != null ? dto.state().trim() : null)
                 .country(trimmedCountry)
-                .categories(resolveCategories(dto.categories()))
+                .primaryCategory(resolved.primary())
+                .categories(resolved.secondaries())
                 .rating(dto.rating() != null ? dto.rating() : 0.0)
                 .reviewCount(0)
                 .aiStatus(dto.aiStatus() != null ? dto.aiStatus() : AiStatus.PENDING)
@@ -96,8 +99,14 @@ public class DestinationService {
         destination.setCity(dto.city().trim());
         destination.setState(dto.state() != null ? dto.state().trim() : null);
         destination.setCountry(trimmedCountry);
-        if (dto.categories() != null) {
-            destination.setCategories(resolveCategories(dto.categories()));
+        if (dto.primaryCategory() != null || dto.categories() != null) {
+            ResolvedCategories resolved = resolveCategories(dto.primaryCategory(), dto.categories());
+            if (dto.primaryCategory() != null || resolved.primary() != null) {
+                destination.setPrimaryCategory(resolved.primary());
+            }
+            if (dto.categories() != null) {
+                destination.setCategories(resolved.secondaries());
+            }
         }
         if (dto.rating() != null) {
             destination.setRating(dto.rating());
@@ -170,19 +179,44 @@ public class DestinationService {
         destinationRepository.deleteById(id);
     }
 
-    private Set<Category> resolveCategories(List<String> categoryInputs) {
-        if (categoryInputs == null || categoryInputs.isEmpty()) {
-            return new HashSet<>();
-        }
-        Set<Category> resolved = new HashSet<>();
-        for (String input : categoryInputs) {
-            if (input != null && !input.isBlank()) {
-                String clean = input.trim();
-                categoryRepository.findByNameIgnoreCase(clean)
-                        .or(() -> categoryRepository.findBySlugIgnoreCase(clean))
-                        .ifPresent(resolved::add);
+    private record ResolvedCategories(Category primary, Set<Category> secondaries) {}
+
+    private ResolvedCategories resolveCategories(String primaryInput, List<String> categoryInputs) {
+        Category primary = null;
+        if (primaryInput != null && !primaryInput.isBlank()) {
+            String cleanPrimary = primaryInput.trim();
+            primary = categoryRepository.findByNameIgnoreCase(cleanPrimary)
+                    .or(() -> categoryRepository.findBySlugIgnoreCase(cleanPrimary))
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Categoria principal não encontrada: " + cleanPrimary));
+            if (!Boolean.TRUE.equals(primary.getIsPrimary())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A categoria informada não é uma categoria principal: " + primary.getName());
             }
         }
-        return resolved;
+
+        Set<Category> secondaries = new HashSet<>();
+        if (categoryInputs != null) {
+            for (String input : categoryInputs) {
+                if (input != null && !input.isBlank()) {
+                    String clean = input.trim();
+                    Category cat = categoryRepository.findByNameIgnoreCase(clean)
+                            .or(() -> categoryRepository.findBySlugIgnoreCase(clean))
+                            .orElse(null);
+
+                    if (cat != null) {
+                        if (Boolean.TRUE.equals(cat.getIsPrimary())) {
+                            if (primary == null) {
+                                primary = cat;
+                            } else if (!primary.getId().equals(cat.getId())) {
+                                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Um destino só pode possuir uma única categoria principal. Encontradas: " + primary.getName() + " e " + cat.getName());
+                            }
+                        } else {
+                            secondaries.add(cat);
+                        }
+                    }
+                }
+            }
+        }
+
+        return new ResolvedCategories(primary, secondaries);
     }
 }

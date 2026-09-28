@@ -15,13 +15,15 @@ public interface DestinationRepository extends JpaRepository<Destination, UUID> 
     @Query(value = "SELECT DISTINCT d.* FROM destinations d " +
             "LEFT JOIN destination_categories dc ON d.id = dc.destination_id " +
             "LEFT JOIN categories c ON dc.category_id = c.id " +
-            "WHERE (CAST(:category AS text) IS NULL OR c.slug ILIKE CAST(:category AS text) OR c.name ILIKE CAST(:category AS text)) " +
+            "LEFT JOIN categories cp ON d.primary_category_id = cp.id " +
+            "WHERE (CAST(:category AS text) IS NULL OR c.slug ILIKE CAST(:category AS text) OR c.name ILIKE CAST(:category AS text) OR cp.slug ILIKE CAST(:category AS text) OR cp.name ILIKE CAST(:category AS text)) " +
             "AND (CAST(:name AS text) IS NULL OR d.name ILIKE CONCAT('%', CAST(:name AS text), '%')) " +
             "ORDER BY d.popularity DESC NULLS LAST, d.approximate_population DESC NULLS LAST, d.name ASC",
             countQuery = "SELECT COUNT(DISTINCT d.id) FROM destinations d " +
             "LEFT JOIN destination_categories dc ON d.id = dc.destination_id " +
             "LEFT JOIN categories c ON dc.category_id = c.id " +
-            "WHERE (CAST(:category AS text) IS NULL OR c.slug ILIKE CAST(:category AS text) OR c.name ILIKE CAST(:category AS text)) " +
+            "LEFT JOIN categories cp ON d.primary_category_id = cp.id " +
+            "WHERE (CAST(:category AS text) IS NULL OR c.slug ILIKE CAST(:category AS text) OR c.name ILIKE CAST(:category AS text) OR cp.slug ILIKE CAST(:category AS text) OR cp.name ILIKE CAST(:category AS text)) " +
             "AND (CAST(:name AS text) IS NULL OR d.name ILIKE CONCAT('%', CAST(:name AS text), '%'))",
             nativeQuery = true)
     Page<Destination> search(

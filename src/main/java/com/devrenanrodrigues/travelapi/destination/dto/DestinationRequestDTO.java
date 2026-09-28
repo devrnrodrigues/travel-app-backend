@@ -26,7 +26,8 @@ public record DestinationRequestDTO(
         @Size(max = 100)
         String country,
 
-        @NotEmpty
+        String primaryCategory,
+
         List<String> categories,
 
         Double rating,

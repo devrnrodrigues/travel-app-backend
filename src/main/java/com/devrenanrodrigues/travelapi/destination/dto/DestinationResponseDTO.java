@@ -34,9 +34,7 @@ public record DestinationResponseDTO(
         Instant updatedAt
 ) {
     public static DestinationResponseDTO fromEntity(Destination destination) {
-        List<String> categoryNames = destination.getCategories() != null
-                ? destination.getCategories().stream().map(Category::getName).toList()
-                : List.of();
+        List<String> categoryNames = destination.getAllCategoryNames();
 
         List<DestinationImageResponseDTO> imageDTOs = destination.getImages() != null
                 ? destination.getImages().stream().map(DestinationImageResponseDTO::fromEntity).toList()

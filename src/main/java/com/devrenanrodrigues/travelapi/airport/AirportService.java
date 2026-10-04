@@ -27,10 +27,16 @@ public class AirportService {
 
         Airport airport = Airport.builder()
                 .iataCode(normalizedIata)
+                .icaoCode(dto.icaoCode() != null ? dto.icaoCode().trim().toUpperCase() : null)
                 .name(dto.name().trim())
                 .city(dto.city().trim())
                 .state(dto.state() != null ? dto.state().trim() : null)
                 .country(dto.country().trim())
+                .continent(dto.continent() != null ? dto.continent().trim().toUpperCase() : null)
+                .type(dto.type() != null ? dto.type().trim() : null)
+                .keywords(dto.keywords() != null ? dto.keywords().trim() : null)
+                .homeLink(dto.homeLink() != null ? dto.homeLink().trim() : null)
+                .wikipediaLink(dto.wikipediaLink() != null ? dto.wikipediaLink().trim() : null)
                 .latitude(dto.latitude())
                 .longitude(dto.longitude())
                 .build();
@@ -73,10 +79,16 @@ public class AirportService {
         }
 
         airport.setIataCode(normalizedIata);
+        airport.setIcaoCode(dto.icaoCode() != null ? dto.icaoCode().trim().toUpperCase() : null);
         airport.setName(dto.name().trim());
         airport.setCity(dto.city().trim());
         airport.setState(dto.state() != null ? dto.state().trim() : null);
         airport.setCountry(dto.country().trim());
+        airport.setContinent(dto.continent() != null ? dto.continent().trim().toUpperCase() : null);
+        airport.setType(dto.type() != null ? dto.type().trim() : null);
+        airport.setKeywords(dto.keywords() != null ? dto.keywords().trim() : null);
+        airport.setHomeLink(dto.homeLink() != null ? dto.homeLink().trim() : null);
+        airport.setWikipediaLink(dto.wikipediaLink() != null ? dto.wikipediaLink().trim() : null);
         airport.setLatitude(dto.latitude());
         airport.setLongitude(dto.longitude());
 

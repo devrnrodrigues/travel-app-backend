@@ -30,6 +30,9 @@ public class Airport {
     @Column(name = "iata_code", length = 3, nullable = false, unique = true)
     private String iataCode;
 
+    @Column(name = "icao_code", length = 4)
+    private String icaoCode;
+
     @Column(length = 150, nullable = false)
     private String name;
 
@@ -41,6 +44,21 @@ public class Airport {
 
     @Column(length = 100, nullable = false)
     private String country;
+
+    @Column(length = 2)
+    private String continent;
+
+    @Column(length = 30)
+    private String type;
+
+    @Column(columnDefinition = "TEXT")
+    private String keywords;
+
+    @Column(name = "home_link", length = 255)
+    private String homeLink;
+
+    @Column(name = "wikipedia_link", length = 255)
+    private String wikipediaLink;
 
     @Column(nullable = false)
     private Double latitude;

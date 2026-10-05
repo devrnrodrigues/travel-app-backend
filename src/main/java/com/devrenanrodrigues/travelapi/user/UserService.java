@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -21,8 +22,8 @@ public class UserService {
     private final UserRepository userRepository;
     private final CloudinaryService cloudinaryService;
     private final CommentRepository commentRepository;
+    private final TransactionTemplate transactionTemplate;
 
-    @Transactional
     public UserResponseDTO updateAvatar(UUID userId, MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Arquivo de imagem obrigatório.");
@@ -40,16 +41,27 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
 
-        if (user.getAvatarPublicId() != null) {
-            cloudinaryService.delete(user.getAvatarPublicId());
-        }
-
+        String oldPublicId = user.getAvatarPublicId();
         CloudinaryUploadResponse uploadResponse = cloudinaryService.upload(file, "travel-app/avatars");
 
-        user.setAvatarUrl(uploadResponse.url());
-        user.setAvatarPublicId(uploadResponse.publicId());
+        User savedUser;
+        try {
+            savedUser = transactionTemplate.execute(status -> {
+                User u = userRepository.findById(userId)
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
+                u.setAvatarUrl(uploadResponse.url());
+                u.setAvatarPublicId(uploadResponse.publicId());
+                return userRepository.save(u);
+            });
+        } catch (Exception ex) {
+            cloudinaryService.delete(uploadResponse.publicId());
+            throw ex;
+        }
 
-        User savedUser = userRepository.save(user);
+        if (oldPublicId != null) {
+            cloudinaryService.delete(oldPublicId);
+        }
+
         long commentsCount = commentRepository.countByUserId(userId);
         return UserResponseDTO.fromEntity(savedUser, commentsCount);
     }

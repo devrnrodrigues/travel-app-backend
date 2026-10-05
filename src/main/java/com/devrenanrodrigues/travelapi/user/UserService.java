@@ -1,5 +1,6 @@
 package com.devrenanrodrigues.travelapi.user;
 
+import com.devrenanrodrigues.travelapi.comment.CommentRepository;
 import com.devrenanrodrigues.travelapi.storage.CloudinaryService;
 import com.devrenanrodrigues.travelapi.storage.dto.CloudinaryUploadResponse;
 import com.devrenanrodrigues.travelapi.user.dto.UpdateProfileRequestDTO;
@@ -19,6 +20,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final CloudinaryService cloudinaryService;
+    private final CommentRepository commentRepository;
 
     @Transactional
     public UserResponseDTO updateAvatar(UUID userId, MultipartFile file) {
@@ -48,13 +50,15 @@ public class UserService {
         user.setAvatarPublicId(uploadResponse.publicId());
 
         User savedUser = userRepository.save(user);
-        return UserResponseDTO.fromEntity(savedUser);
+        long commentsCount = commentRepository.countByUserId(userId);
+        return UserResponseDTO.fromEntity(savedUser, commentsCount);
     }
 
     public UserResponseDTO getProfile(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
-        return UserResponseDTO.fromEntity(user);
+        long commentsCount = commentRepository.countByUserId(userId);
+        return UserResponseDTO.fromEntity(user, commentsCount);
     }
 
     @Transactional
@@ -73,6 +77,7 @@ public class UserService {
         }
 
         User savedUser = userRepository.save(user);
-        return UserResponseDTO.fromEntity(savedUser);
+        long commentsCount = commentRepository.countByUserId(userId);
+        return UserResponseDTO.fromEntity(savedUser, commentsCount);
     }
 }

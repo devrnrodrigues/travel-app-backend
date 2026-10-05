@@ -16,9 +16,14 @@ public record UserResponseDTO(
         String nationality,
         AuthProvider provider,
         Role role,
-        Instant createdAt
+        Instant createdAt,
+        Long commentsCount
 ) {
     public static UserResponseDTO fromEntity(User user) {
+        return fromEntity(user, 0L);
+    }
+
+    public static UserResponseDTO fromEntity(User user, Long commentsCount) {
         return new UserResponseDTO(
                 user.getId(),
                 user.getEmail(),
@@ -28,7 +33,8 @@ public record UserResponseDTO(
                 user.getNationality(),
                 user.getProvider(),
                 user.getRole(),
-                user.getCreatedAt()
+                user.getCreatedAt(),
+                commentsCount != null ? commentsCount : 0L
         );
     }
 }

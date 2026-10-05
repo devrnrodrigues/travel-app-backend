@@ -16,6 +16,8 @@ public interface CommentRepository extends JpaRepository<Comment, UUID> {
 
     List<Comment> findByUserIdOrderByCreatedAtDesc(UUID userId);
 
+    long countByUserId(UUID userId);
+
     boolean existsByDestinationIdAndUserId(UUID destinationId, UUID userId);
 
     boolean existsByDestinationId(UUID destinationId);

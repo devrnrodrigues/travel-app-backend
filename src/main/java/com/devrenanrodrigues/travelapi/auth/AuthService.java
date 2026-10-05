@@ -7,6 +7,7 @@ import com.devrenanrodrigues.travelapi.auth.dto.LoginRequestDTO;
 import com.devrenanrodrigues.travelapi.auth.dto.RefreshTokenRequestDTO;
 import com.devrenanrodrigues.travelapi.auth.dto.RegisterRequestDTO;
 import com.devrenanrodrigues.travelapi.auth.dto.TokenResponseDTO;
+import com.devrenanrodrigues.travelapi.comment.CommentRepository;
 import com.devrenanrodrigues.travelapi.user.AuthProvider;
 import com.devrenanrodrigues.travelapi.user.Role;
 import com.devrenanrodrigues.travelapi.user.User;
@@ -28,6 +29,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenService refreshTokenService;
+    private final CommentRepository commentRepository;
 
     @Transactional
     public AuthResponseDTO loginWithGoogle(GoogleLoginRequestDTO request) {
@@ -39,7 +41,8 @@ public class AuthService {
 
         String token = jwtService.generateToken(user);
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
-        return AuthResponseDTO.of(token, refreshToken.getToken(), jwtService.getExpirationSeconds(), UserResponseDTO.fromEntity(user));
+        long commentsCount = commentRepository.countByUserId(user.getId());
+        return AuthResponseDTO.of(token, refreshToken.getToken(), jwtService.getExpirationSeconds(), UserResponseDTO.fromEntity(user, commentsCount));
     }
 
     @Transactional
@@ -81,7 +84,8 @@ public class AuthService {
 
         String token = jwtService.generateToken(user);
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
-        return AuthResponseDTO.of(token, refreshToken.getToken(), jwtService.getExpirationSeconds(), UserResponseDTO.fromEntity(user));
+        long commentsCount = commentRepository.countByUserId(user.getId());
+        return AuthResponseDTO.of(token, refreshToken.getToken(), jwtService.getExpirationSeconds(), UserResponseDTO.fromEntity(user, commentsCount));
     }
 
     @Transactional

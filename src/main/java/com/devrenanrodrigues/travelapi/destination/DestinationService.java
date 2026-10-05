@@ -133,13 +133,16 @@ public class DestinationService {
         String cleanCategory = (category != null && !category.isBlank()) ? category.trim() : null;
         String cleanName = (name != null && !name.isBlank()) ? name.trim() : null;
         String cleanSortBy = (sortBy != null && !sortBy.isBlank()) ? sortBy.trim() : null;
-        return destinationRepository.search(cleanCategory, cleanName, cleanSortBy, pageable)
-                .map(DestinationSummaryResponseDTO::fromEntity);
+        Page<Destination> page = destinationRepository.search(cleanCategory, cleanName, cleanSortBy, pageable);
+        if (page.hasContent()) {
+            List<UUID> ids = page.getContent().stream().map(Destination::getId).toList();
+            destinationRepository.findAllByIdInWithPrimaryCategory(ids);
+        }
+        return page.map(DestinationSummaryResponseDTO::fromEntity);
     }
 
-    @Transactional
     public DestinationDetailResponseDTO findById(UUID id) {
-        Destination destination = destinationRepository.findById(id)
+        Destination destination = destinationRepository.findByIdWithImages(id)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Destino não encontrado com o id: " + id

@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -51,6 +52,12 @@ public interface DestinationRepository extends JpaRepository<Destination, UUID> 
             @Param("sortBy") String sortBy,
             Pageable pageable
     );
+
+    @Query("SELECT d FROM Destination d LEFT JOIN FETCH d.images WHERE d.id = :id")
+    Optional<Destination> findByIdWithImages(@Param("id") UUID id);
+
+    @Query("SELECT DISTINCT d FROM Destination d LEFT JOIN FETCH d.primaryCategory WHERE d.id IN :ids")
+    java.util.List<Destination> findAllByIdInWithPrimaryCategory(@Param("ids") java.util.Collection<UUID> ids);
 
     boolean existsByNameIgnoreCaseAndCountryIgnoreCase(String name, String country);
 

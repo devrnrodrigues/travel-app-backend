@@ -13,14 +13,14 @@ import java.util.UUID;
 @Repository
 public interface FavoriteRepository extends JpaRepository<Favorite, FavoriteId> {
 
-    @Query("SELECT f FROM Favorite f JOIN FETCH f.destination WHERE f.id.userId = :userId ORDER BY f.createdAt DESC")
+    @Query("SELECT f FROM Favorite f JOIN FETCH f.destination d LEFT JOIN FETCH d.primaryCategory WHERE f.id.userId = :userId ORDER BY f.createdAt DESC")
     List<Favorite> findByUserId(@Param("userId") UUID userId);
 
-    @Query("SELECT f FROM Favorite f JOIN FETCH f.destination ORDER BY f.createdAt DESC")
+    @Query("SELECT f FROM Favorite f JOIN FETCH f.destination d LEFT JOIN FETCH d.primaryCategory ORDER BY f.createdAt DESC")
     List<Favorite> findAllWithDestination();
 
     @Query(
-        value = "SELECT f FROM Favorite f JOIN FETCH f.destination d WHERE f.id.userId = :userId ORDER BY f.createdAt DESC",
+        value = "SELECT f FROM Favorite f JOIN FETCH f.destination d LEFT JOIN FETCH d.primaryCategory WHERE f.id.userId = :userId ORDER BY f.createdAt DESC",
         countQuery = "SELECT COUNT(f) FROM Favorite f WHERE f.id.userId = :userId"
     )
     Page<Favorite> findByUserId(
@@ -29,13 +29,13 @@ public interface FavoriteRepository extends JpaRepository<Favorite, FavoriteId> 
     );
 
     @Query(
-        value = "SELECT f FROM Favorite f JOIN FETCH f.destination d ORDER BY f.createdAt DESC",
+        value = "SELECT f FROM Favorite f JOIN FETCH f.destination d LEFT JOIN FETCH d.primaryCategory ORDER BY f.createdAt DESC",
         countQuery = "SELECT COUNT(f) FROM Favorite f"
     )
     Page<Favorite> findAllWithDestination(Pageable pageable);
 
     @Query(
-        value = "SELECT f FROM Favorite f JOIN FETCH f.destination d " +
+        value = "SELECT f FROM Favorite f JOIN FETCH f.destination d LEFT JOIN FETCH d.primaryCategory " +
                 "WHERE f.id.userId = :userId " +
                 "AND (" +
                 "LOWER(d.name) LIKE :pattern OR " +
@@ -58,7 +58,7 @@ public interface FavoriteRepository extends JpaRepository<Favorite, FavoriteId> 
     );
 
     @Query(
-        value = "SELECT f FROM Favorite f JOIN FETCH f.destination d " +
+        value = "SELECT f FROM Favorite f JOIN FETCH f.destination d LEFT JOIN FETCH d.primaryCategory " +
                 "WHERE (" +
                 "LOWER(d.name) LIKE :pattern OR " +
                 "LOWER(d.city) LIKE :pattern OR " +

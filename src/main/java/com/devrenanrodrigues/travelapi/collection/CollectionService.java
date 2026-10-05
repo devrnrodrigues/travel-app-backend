@@ -12,11 +12,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -27,6 +29,7 @@ public class CollectionService {
     private final CollectionPhotoRepository collectionPhotoRepository;
     private final UserRepository userRepository;
     private final CloudinaryService cloudinaryService;
+    private final TransactionTemplate transactionTemplate;
 
     @Transactional(readOnly = true)
     public List<CollectionResponseDTO> getCollections(UUID userId) {
@@ -43,7 +46,6 @@ public class CollectionService {
         return CollectionResponseDTO.fromEntity(collection);
     }
 
-    @Transactional
     public CollectionResponseDTO createCollection(UUID userId, String title, List<MultipartFile> files) {
         if (title == null || title.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O título da coleção é obrigatório.");
@@ -54,79 +56,127 @@ public class CollectionService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O título deve ter no máximo 30 caracteres.");
         }
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
-
-        Collection collection = Collection.builder()
-                .user(user)
-                .title(trimmedTitle)
-                .photos(new ArrayList<>())
-                .build();
-
-        collection = collectionRepository.save(collection);
-
-        if (files != null && !files.isEmpty()) {
-            String folder = "travel-app/collections/" + userId;
-            int order = 0;
-            for (MultipartFile file : files) {
-                if (file == null || file.isEmpty()) {
-                    continue;
-                }
-                CloudinaryUploadResponse uploadResponse = cloudinaryService.upload(file, folder);
-                CollectionPhoto photo = CollectionPhoto.builder()
-                        .collection(collection)
-                        .url(uploadResponse.url())
-                        .publicId(uploadResponse.publicId())
-                        .orderIndex(order++)
-                        .build();
-                collection.getPhotos().add(photo);
-            }
-            collection = collectionRepository.save(collection);
+        if (!userRepository.existsById(userId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado.");
         }
 
-        return CollectionResponseDTO.fromEntity(collection);
+        List<CloudinaryUploadResponse> uploadResponses = new ArrayList<>();
+        if (files != null && !files.isEmpty()) {
+            String folder = "travel-app/collections/" + userId;
+            try {
+                for (MultipartFile file : files) {
+                    if (file == null || file.isEmpty()) {
+                        continue;
+                    }
+                    uploadResponses.add(cloudinaryService.upload(file, folder));
+                }
+            } catch (Exception ex) {
+                for (CloudinaryUploadResponse resp : uploadResponses) {
+                    cloudinaryService.delete(resp.publicId());
+                }
+                throw ex;
+            }
+        }
+
+        Collection saved;
+        try {
+            saved = transactionTemplate.execute(status -> {
+                User user = userRepository.findById(userId)
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
+
+                Collection collection = Collection.builder()
+                        .user(user)
+                        .title(trimmedTitle)
+                        .photos(new ArrayList<>())
+                        .build();
+
+                int order = 0;
+                for (CloudinaryUploadResponse uploadResponse : uploadResponses) {
+                    CollectionPhoto photo = CollectionPhoto.builder()
+                            .collection(collection)
+                            .url(uploadResponse.url())
+                            .publicId(uploadResponse.publicId())
+                            .orderIndex(order++)
+                            .build();
+                    collection.getPhotos().add(photo);
+                }
+
+                return collectionRepository.save(collection);
+            });
+        } catch (Exception ex) {
+            for (CloudinaryUploadResponse resp : uploadResponses) {
+                cloudinaryService.delete(resp.publicId());
+            }
+            throw ex;
+        }
+
+        return CollectionResponseDTO.fromEntity(saved);
     }
 
-    @Transactional
     public CollectionResponseDTO updateCollection(UUID id, UUID userId, UpdateCollectionRequestDTO dto) {
         Collection collection = collectionRepository.findByIdAndUserIdWithPhotos(id, userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Coleção não encontrada."));
 
-        if (dto.title() != null && !dto.title().isBlank()) {
-            collection.setTitle(dto.title().trim());
-        }
-
+        List<CollectionPhoto> photosToDelete = new ArrayList<>();
         if (dto.deletePhotoIds() != null && !dto.deletePhotoIds().isEmpty() && collection.getPhotos() != null) {
-            List<CollectionPhoto> photosToDelete = collection.getPhotos().stream()
+            photosToDelete = collection.getPhotos().stream()
                     .filter(p -> dto.deletePhotoIds().contains(p.getId()))
                     .toList();
-
-            for (CollectionPhoto photo : photosToDelete) {
-                cloudinaryService.delete(photo.getPublicId());
-                collection.getPhotos().remove(photo);
-            }
         }
 
-        collection = collectionRepository.save(collection);
+        List<String> publicIdsToDelete = photosToDelete.stream()
+                .map(CollectionPhoto::getPublicId)
+                .filter(Objects::nonNull)
+                .toList();
 
-        return CollectionResponseDTO.fromEntity(collection);
+        final List<CollectionPhoto> finalPhotosToDelete = photosToDelete;
+        Collection updated = transactionTemplate.execute(status -> {
+            Collection c = collectionRepository.findByIdAndUserIdWithPhotos(id, userId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Coleção não encontrada."));
+
+            if (dto.title() != null && !dto.title().isBlank()) {
+                c.setTitle(dto.title().trim());
+            }
+
+            if (!finalPhotosToDelete.isEmpty() && c.getPhotos() != null) {
+                c.getPhotos().removeIf(p -> dto.deletePhotoIds().contains(p.getId()));
+            }
+
+            return collectionRepository.save(c);
+        });
+
+        for (String pubId : publicIdsToDelete) {
+            cloudinaryService.delete(pubId);
+        }
+
+        return CollectionResponseDTO.fromEntity(updated);
     }
 
-    @Transactional
     public void deleteCollection(UUID id, UUID userId) {
         Collection collection = collectionRepository.findByIdAndUserIdWithPhotos(id, userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Coleção não encontrada."));
 
+        List<String> publicIdsToDelete = new ArrayList<>();
         if (collection.getPhotos() != null) {
             for (CollectionPhoto photo : collection.getPhotos()) {
-                cloudinaryService.delete(photo.getPublicId());
+                if (photo.getPublicId() != null && !photo.getPublicId().isBlank()) {
+                    publicIdsToDelete.add(photo.getPublicId());
+                }
             }
         }
 
-        collectionRepository.delete(collection);
+        transactionTemplate.executeWithoutResult(status -> {
+            Collection c = collectionRepository.findByIdAndUserIdWithPhotos(id, userId).orElse(null);
+            if (c != null) {
+                collectionRepository.delete(c);
+            }
+        });
+
+        for (String pubId : publicIdsToDelete) {
+            cloudinaryService.delete(pubId);
+        }
     }
 
-    @Transactional
     public CollectionResponseDTO addPhotos(UUID id, UUID userId, List<MultipartFile> files) {
         if (files == null || files.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nenhuma foto informada para envio.");
@@ -136,24 +186,48 @@ public class CollectionService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Coleção não encontrada."));
 
         String folder = "travel-app/collections/" + userId;
-        int nextOrder = collection.getPhotos() == null ? 0 : collection.getPhotos().size();
-
-        for (MultipartFile file : files) {
-            if (file == null || file.isEmpty()) {
-                continue;
+        List<CloudinaryUploadResponse> uploadResponses = new ArrayList<>();
+        try {
+            for (MultipartFile file : files) {
+                if (file == null || file.isEmpty()) {
+                    continue;
+                }
+                uploadResponses.add(cloudinaryService.upload(file, folder));
             }
-            CloudinaryUploadResponse uploadResponse = cloudinaryService.upload(file, folder);
-            CollectionPhoto photo = CollectionPhoto.builder()
-                    .collection(collection)
-                    .url(uploadResponse.url())
-                    .publicId(uploadResponse.publicId())
-                    .orderIndex(nextOrder++)
-                    .build();
-            collection.getPhotos().add(photo);
+        } catch (Exception ex) {
+            for (CloudinaryUploadResponse resp : uploadResponses) {
+                cloudinaryService.delete(resp.publicId());
+            }
+            throw ex;
         }
 
-        collection = collectionRepository.save(collection);
-        return CollectionResponseDTO.fromEntity(collection);
+        Collection updated;
+        try {
+            updated = transactionTemplate.execute(status -> {
+                Collection c = collectionRepository.findByIdAndUserIdWithPhotos(id, userId)
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Coleção não encontrada."));
+
+                int nextOrder = c.getPhotos() == null ? 0 : c.getPhotos().size();
+                for (CloudinaryUploadResponse uploadResponse : uploadResponses) {
+                    CollectionPhoto photo = CollectionPhoto.builder()
+                            .collection(c)
+                            .url(uploadResponse.url())
+                            .publicId(uploadResponse.publicId())
+                            .orderIndex(nextOrder++)
+                            .build();
+                    c.getPhotos().add(photo);
+                }
+
+                return collectionRepository.save(c);
+            });
+        } catch (Exception ex) {
+            for (CloudinaryUploadResponse resp : uploadResponses) {
+                cloudinaryService.delete(resp.publicId());
+            }
+            throw ex;
+        }
+
+        return CollectionResponseDTO.fromEntity(updated);
     }
 
     @Transactional
@@ -176,16 +250,29 @@ public class CollectionService {
         return CollectionPhotoResponseDTO.fromEntity(photo);
     }
 
-    @Transactional
     public void deletePhoto(UUID collectionId, UUID photoId, UUID userId) {
-        Collection collection = collectionRepository.findByIdAndUserIdWithPhotos(collectionId, userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Coleção não encontrada."));
+        if (!collectionRepository.existsByIdAndUserId(collectionId, userId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Coleção não encontrada.");
+        }
 
         CollectionPhoto photo = collectionPhotoRepository.findByIdAndCollectionId(photoId, collectionId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Foto não encontrada na coleção."));
 
-        cloudinaryService.delete(photo.getPublicId());
-        collection.getPhotos().remove(photo);
-        collectionPhotoRepository.delete(photo);
+        String publicIdToDelete = photo.getPublicId();
+
+        transactionTemplate.executeWithoutResult(status -> {
+            Collection collection = collectionRepository.findByIdAndUserIdWithPhotos(collectionId, userId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Coleção não encontrada."));
+
+            CollectionPhoto p = collectionPhotoRepository.findByIdAndCollectionId(photoId, collectionId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Foto não encontrada na coleção."));
+
+            collection.getPhotos().remove(p);
+            collectionPhotoRepository.delete(p);
+        });
+
+        if (publicIdToDelete != null && !publicIdToDelete.isBlank()) {
+            cloudinaryService.delete(publicIdToDelete);
+        }
     }
 }

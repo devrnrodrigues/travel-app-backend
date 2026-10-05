@@ -1,6 +1,5 @@
 package com.devrenanrodrigues.travelapi.destination.dto;
 
-import com.devrenanrodrigues.travelapi.category.Category;
 import com.devrenanrodrigues.travelapi.destination.Destination;
 
 import java.util.List;
@@ -16,7 +15,8 @@ public record DestinationSummaryResponseDTO(
         String coverImageUrl,
         String photoQuery,
         Double rating,
-        Integer reviewCount
+        Integer reviewCount,
+        String aiCostEstimates
 ) {
     public static DestinationSummaryResponseDTO fromEntity(Destination destination) {
         List<String> categoryNames = destination.getAllCategoryNames();
@@ -31,7 +31,8 @@ public record DestinationSummaryResponseDTO(
                 destination.getCoverImageUrl(),
                 destination.getPhotoQuery(),
                 destination.getRating(),
-                destination.getReviewCount()
+                destination.getReviewCount(),
+                destination.getAiCostEstimates()
         );
     }
 }

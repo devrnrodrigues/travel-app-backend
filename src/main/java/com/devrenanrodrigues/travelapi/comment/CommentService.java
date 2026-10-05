@@ -14,6 +14,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -36,13 +37,12 @@ public class CommentService {
     private final DestinationRepository destinationRepository;
     private final UserRepository userRepository;
     private final CloudinaryService cloudinaryService;
+    private final TransactionTemplate transactionTemplate;
 
-    @Transactional
     public CommentResponseDTO create(UUID destinationId, UUID userId, CommentRequestDTO dto) {
         return create(destinationId, userId, dto.rating(), dto.content(), null);
     }
 
-    @Transactional
     public CommentResponseDTO create(
             UUID destinationId,
             UUID userId,
@@ -76,43 +76,72 @@ public class CommentService {
                         "Destino não encontrado com o id: " + destinationId
                 ));
 
-        Comment comment = Comment.builder()
-                .userId(userId)
-                .destination(destination)
-                .rating(rating)
-                .content(content.trim())
-                .helpfulCount(0)
-                .photos(new ArrayList<>())
-                .build();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Usuário não encontrado."
+                ));
 
+        List<CloudinaryUploadResponse> uploadedResponses = new ArrayList<>();
         if (files != null && !files.isEmpty()) {
             String folder = "travel-app/comments/" + destinationId;
-            int order = 0;
-            for (MultipartFile file : files) {
-                if (file == null || file.isEmpty()) {
-                    continue;
+            try {
+                for (MultipartFile file : files) {
+                    if (file == null || file.isEmpty()) {
+                        continue;
+                    }
+                    uploadedResponses.add(cloudinaryService.upload(file, folder));
                 }
-                CloudinaryUploadResponse uploadResponse = cloudinaryService.upload(file, folder);
-                CommentPhoto photo = CommentPhoto.builder()
-                        .comment(comment)
-                        .url(uploadResponse.url())
-                        .publicId(uploadResponse.publicId())
-                        .orderIndex(order++)
-                        .build();
-                comment.getPhotos().add(photo);
+            } catch (Exception ex) {
+                for (CloudinaryUploadResponse res : uploadedResponses) {
+                    cloudinaryService.delete(res.publicId());
+                }
+                throw ex;
             }
         }
 
+        Comment saved;
         try {
-            Comment saved = commentRepository.saveAndFlush(comment);
-            updateDestinationRatingAndCount(destination);
-            User user = userRepository.findById(userId).orElse(null);
-            String userName = user != null ? (user.getFullName() != null && !user.getFullName().isBlank() ? user.getFullName() : user.getEmail()) : null;
-            String userAvatarUrl = user != null ? user.getAvatarUrl() : null;
-            return CommentResponseDTO.fromEntity(saved, userName, userAvatarUrl, false);
+            saved = transactionTemplate.execute(status -> {
+                Comment comment = Comment.builder()
+                        .user(user)
+                        .destination(destination)
+                        .rating(rating)
+                        .content(content.trim())
+                        .helpfulCount(0)
+                        .photos(new ArrayList<>())
+                        .build();
+
+                int order = 0;
+                for (CloudinaryUploadResponse uploadResponse : uploadedResponses) {
+                    CommentPhoto photo = CommentPhoto.builder()
+                            .comment(comment)
+                            .url(uploadResponse.url())
+                            .publicId(uploadResponse.publicId())
+                            .orderIndex(order++)
+                            .build();
+                    comment.getPhotos().add(photo);
+                }
+
+                Comment persisted = commentRepository.saveAndFlush(comment);
+                updateDestinationRatingAndCount(destination);
+                return persisted;
+            });
         } catch (DataIntegrityViolationException ex) {
+            for (CloudinaryUploadResponse res : uploadedResponses) {
+                cloudinaryService.delete(res.publicId());
+            }
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Você já avaliou este destino.");
+        } catch (Exception ex) {
+            for (CloudinaryUploadResponse res : uploadedResponses) {
+                cloudinaryService.delete(res.publicId());
+            }
+            throw ex;
         }
+
+        String userName = user.getFullName() != null && !user.getFullName().isBlank() ? user.getFullName() : user.getEmail();
+        String userAvatarUrl = user.getAvatarUrl();
+        return CommentResponseDTO.fromEntity(saved, userName, userAvatarUrl, false);
     }
 
     @Transactional(readOnly = true)
@@ -130,14 +159,6 @@ public class CommentService {
         }
 
         List<Comment> commentsList = commentRepository.findByDestinationIdOrderByCreatedAtDesc(destinationId);
-        Set<UUID> userIds = commentsList.stream()
-                .map(Comment::getUserId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-
-        Map<UUID, User> userMap = userRepository.findAllById(userIds)
-                .stream()
-                .collect(Collectors.toMap(User::getId, Function.identity()));
 
         Set<UUID> commentIds = commentsList.stream()
                 .map(Comment::getId)
@@ -149,7 +170,7 @@ public class CommentService {
 
         List<CommentResponseDTO> comments = commentsList.stream()
                 .map(c -> {
-                    User user = userMap.get(c.getUserId());
+                    User user = c.getUser();
                     String userName = user != null ? (user.getFullName() != null && !user.getFullName().isBlank() ? user.getFullName() : user.getEmail()) : null;
                     String userAvatarUrl = user != null ? user.getAvatarUrl() : null;
                     boolean isHelpful = votedCommentIds.contains(c.getId());
@@ -168,12 +189,10 @@ public class CommentService {
         );
     }
 
-    @Transactional
     public CommentResponseDTO update(UUID id, UUID userId, boolean isAdmin, CommentRequestDTO dto) {
         return update(id, userId, isAdmin, dto.rating(), dto.content(), null, false, null);
     }
 
-    @Transactional
     public CommentResponseDTO update(
             UUID id,
             UUID userId,
@@ -203,9 +222,6 @@ public class CommentService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O comentário deve ter no máximo 1000 caracteres.");
         }
 
-        comment.setRating(rating);
-        comment.setContent(content.trim());
-
         List<CommentPhoto> existingPhotos = comment.getPhotos() != null ? comment.getPhotos() : new ArrayList<>();
         List<CommentPhoto> photosToRemove = new ArrayList<>();
 
@@ -219,48 +235,94 @@ public class CommentService {
             }
         }
 
+        List<String> publicIdsToDelete = new ArrayList<>();
         for (CommentPhoto photo : photosToRemove) {
             if (photo.getPublicId() != null && !photo.getPublicId().isBlank()) {
-                cloudinaryService.delete(photo.getPublicId());
+                publicIdsToDelete.add(photo.getPublicId());
             }
         }
-        existingPhotos.removeAll(photosToRemove);
 
         int newFilesCount = files != null ? files.size() : 0;
-        if (existingPhotos.size() + newFilesCount > 5) {
+        if (existingPhotos.size() - photosToRemove.size() + newFilesCount > 5) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O limite máximo é de 5 fotos por comentário.");
         }
 
+        List<CloudinaryUploadResponse> newUploadResponses = new ArrayList<>();
         if (files != null && !files.isEmpty()) {
             String folder = "travel-app/comments/" + comment.getDestination().getId();
-            for (MultipartFile file : files) {
-                if (file == null || file.isEmpty()) {
-                    continue;
+            try {
+                for (MultipartFile file : files) {
+                    if (file == null || file.isEmpty()) {
+                        continue;
+                    }
+                    newUploadResponses.add(cloudinaryService.upload(file, folder));
                 }
-                CloudinaryUploadResponse uploadResponse = cloudinaryService.upload(file, folder);
-                CommentPhoto photo = CommentPhoto.builder()
-                        .comment(comment)
-                        .url(uploadResponse.url())
-                        .publicId(uploadResponse.publicId())
-                        .orderIndex(existingPhotos.size())
-                        .build();
-                existingPhotos.add(photo);
+            } catch (Exception ex) {
+                for (CloudinaryUploadResponse resp : newUploadResponses) {
+                    cloudinaryService.delete(resp.publicId());
+                }
+                throw ex;
             }
         }
 
-        for (int i = 0; i < existingPhotos.size(); i++) {
-            existingPhotos.get(i).setOrderIndex(i);
+        Comment updated;
+        try {
+            updated = transactionTemplate.execute(status -> {
+                Comment c = commentRepository.findById(id)
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comentário não encontrado com o id: " + id));
+
+                c.setRating(rating);
+                c.setContent(content.trim());
+
+                List<CommentPhoto> currentPhotos = c.getPhotos() != null ? c.getPhotos() : new ArrayList<>();
+                List<CommentPhoto> toRemove = new ArrayList<>();
+                if (Boolean.TRUE.equals(clearPhotos)) {
+                    toRemove.addAll(currentPhotos);
+                } else if (keepPhotoIds != null) {
+                    for (CommentPhoto photo : currentPhotos) {
+                        if (!keepPhotoIds.contains(photo.getId())) {
+                            toRemove.add(photo);
+                        }
+                    }
+                }
+                currentPhotos.removeAll(toRemove);
+
+                int startOrder = currentPhotos.size();
+                for (CloudinaryUploadResponse resp : newUploadResponses) {
+                    CommentPhoto photo = CommentPhoto.builder()
+                            .comment(c)
+                            .url(resp.url())
+                            .publicId(resp.publicId())
+                            .orderIndex(startOrder++)
+                            .build();
+                    currentPhotos.add(photo);
+                }
+
+                for (int i = 0; i < currentPhotos.size(); i++) {
+                    currentPhotos.get(i).setOrderIndex(i);
+                }
+
+                c.setPhotos(currentPhotos);
+                Comment persisted = commentRepository.save(c);
+
+                Destination destination = persisted.getDestination();
+                if (destination != null) {
+                    updateDestinationRatingAndCount(destination);
+                }
+                return persisted;
+            });
+        } catch (Exception ex) {
+            for (CloudinaryUploadResponse resp : newUploadResponses) {
+                cloudinaryService.delete(resp.publicId());
+            }
+            throw ex;
         }
 
-        comment.setPhotos(existingPhotos);
-        Comment updated = commentRepository.save(comment);
-
-        Destination destination = comment.getDestination();
-        if (destination != null) {
-            updateDestinationRatingAndCount(destination);
+        for (String pubId : publicIdsToDelete) {
+            cloudinaryService.delete(pubId);
         }
 
-        User user = userRepository.findById(comment.getUserId()).orElse(null);
+        User user = updated.getUser() != null ? updated.getUser() : userRepository.findById(userId).orElse(null);
         String userName = user != null ? (user.getFullName() != null && !user.getFullName().isBlank() ? user.getFullName() : user.getEmail()) : null;
         String userAvatarUrl = user != null ? user.getAvatarUrl() : null;
         boolean isHelpful = commentHelpfulVoteRepository.existsByCommentIdAndUserId(updated.getId(), userId);
@@ -268,7 +330,6 @@ public class CommentService {
         return CommentResponseDTO.fromEntity(updated, userName, userAvatarUrl, isHelpful);
     }
 
-    @Transactional
     public void delete(UUID id, UUID userId, boolean isAdmin) {
         Comment comment = commentRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comentário não encontrado com o id: " + id));
@@ -277,21 +338,29 @@ public class CommentService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não tem permissão para excluir este comentário.");
         }
 
+        List<String> publicIdsToDelete = new ArrayList<>();
         if (comment.getPhotos() != null) {
             for (CommentPhoto photo : comment.getPhotos()) {
                 if (photo.getPublicId() != null && !photo.getPublicId().isBlank()) {
-                    cloudinaryService.delete(photo.getPublicId());
+                    publicIdsToDelete.add(photo.getPublicId());
                 }
             }
         }
 
-        commentHelpfulVoteRepository.deleteByCommentId(id);
+        transactionTemplate.executeWithoutResult(status -> {
+            Comment c = commentRepository.findById(id).orElse(null);
+            if (c != null) {
+                commentHelpfulVoteRepository.deleteByCommentId(id);
+                Destination destination = c.getDestination();
+                commentRepository.delete(c);
+                if (destination != null) {
+                    updateDestinationRatingAndCount(destination);
+                }
+            }
+        });
 
-        Destination destination = comment.getDestination();
-        commentRepository.delete(comment);
-
-        if (destination != null) {
-            updateDestinationRatingAndCount(destination);
+        for (String pubId : publicIdsToDelete) {
+            cloudinaryService.delete(pubId);
         }
     }
 
@@ -323,7 +392,7 @@ public class CommentService {
 
         Comment saved = commentRepository.save(comment);
 
-        User user = userRepository.findById(saved.getUserId()).orElse(null);
+        User user = saved.getUser() != null ? saved.getUser() : userRepository.findById(saved.getUserId()).orElse(null);
         String userName = user != null ? (user.getFullName() != null && !user.getFullName().isBlank() ? user.getFullName() : user.getEmail()) : null;
         String userAvatarUrl = user != null ? user.getAvatarUrl() : null;
 

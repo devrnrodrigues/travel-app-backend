@@ -1,6 +1,7 @@
 package com.devrenanrodrigues.travelapi.comment;
 
 import com.devrenanrodrigues.travelapi.destination.Destination;
+import com.devrenanrodrigues.travelapi.user.User;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -46,8 +47,13 @@ public class Comment {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "user_id", nullable = false)
-    private UUID userId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    public UUID getUserId() {
+        return user != null ? user.getId() : null;
+    }
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "destination_id", nullable = false)

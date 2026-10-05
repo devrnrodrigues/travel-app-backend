@@ -11,7 +11,7 @@ import java.util.UUID;
 @Repository
 public interface CommentRepository extends JpaRepository<Comment, UUID> {
 
-    @Query("SELECT DISTINCT c FROM Comment c LEFT JOIN FETCH c.photos WHERE c.destination.id = :destinationId ORDER BY c.createdAt DESC")
+    @Query("SELECT DISTINCT c FROM Comment c JOIN FETCH c.user LEFT JOIN FETCH c.photos WHERE c.destination.id = :destinationId ORDER BY c.createdAt DESC")
     List<Comment> findByDestinationIdOrderByCreatedAtDesc(@Param("destinationId") UUID destinationId);
 
     List<Comment> findByUserIdOrderByCreatedAtDesc(UUID userId);

@@ -28,7 +28,6 @@ public class WeatherService {
     private final OpenMeteoClient openMeteoClient;
     private final WeatherProperties weatherProperties;
 
-    @Transactional
     public WeatherResponseDTO findByDestinationId(UUID destinationId) {
         Destination destination = destinationRepository.findById(destinationId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Destino não encontrado com o id: " + destinationId));
@@ -44,7 +43,6 @@ public class WeatherService {
         return weather;
     }
 
-    @Transactional
     public WeatherResponseDTO getOrFetchWeather(Destination destination) {
         DestinationWeather cached = weatherRepository.findById(destination.getId()).orElse(null);
         if (cached != null && isCacheValid(cached)) {

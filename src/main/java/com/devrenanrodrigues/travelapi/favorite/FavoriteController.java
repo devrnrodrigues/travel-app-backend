@@ -4,6 +4,9 @@ import com.devrenanrodrigues.travelapi.favorite.dto.FavoriteResponseDTO;
 import com.devrenanrodrigues.travelapi.favorite.dto.FavoriteStatusDTO;
 import com.devrenanrodrigues.travelapi.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -47,13 +50,15 @@ public class FavoriteController {
     }
 
     @GetMapping
-    public List<FavoriteResponseDTO> findFavorites(
+    public Page<FavoriteResponseDTO> findFavorites(
             @RequestParam(required = false) UUID userId,
+            @RequestParam(required = false) String search,
+            @PageableDefault(size = 10, page = 0) Pageable pageable,
             @AuthenticationPrincipal Jwt jwt
     ) {
         UUID authenticatedUserId = SecurityUtils.getUserId(jwt);
         boolean isAdmin = SecurityUtils.isAdmin(jwt);
-        return favoriteService.findFavorites(authenticatedUserId, isAdmin, userId);
+        return favoriteService.findFavorites(authenticatedUserId, isAdmin, userId, search, pageable);
     }
 
     @GetMapping("/{destinationId}/check")

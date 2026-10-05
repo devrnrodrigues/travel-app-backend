@@ -5,6 +5,8 @@ import com.devrenanrodrigues.travelapi.destination.DestinationRepository;
 import com.devrenanrodrigues.travelapi.favorite.dto.FavoriteResponseDTO;
 import com.devrenanrodrigues.travelapi.favorite.dto.FavoriteStatusDTO;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,28 +55,45 @@ public class FavoriteService {
     }
 
     @Transactional(readOnly = true)
-    public List<FavoriteResponseDTO> findFavorites(UUID authenticatedUserId, boolean isAdmin, UUID targetUserId) {
+    public Page<FavoriteResponseDTO> findFavorites(
+            UUID authenticatedUserId,
+            boolean isAdmin,
+            UUID targetUserId,
+            String search,
+            Pageable pageable
+    ) {
         if (!isAdmin && targetUserId != null && !targetUserId.equals(authenticatedUserId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não tem permissão para visualizar favoritos de outros usuários.");
         }
 
-        if (isAdmin) {
-            if (targetUserId != null) {
-                return favoriteRepository.findByUserId(targetUserId)
-                        .stream()
-                        .map(FavoriteResponseDTO::fromEntity)
-                        .toList();
+        String cleanSearch = (search != null && !search.isBlank()) ? search.trim() : null;
+
+        if (cleanSearch == null) {
+            if (isAdmin) {
+                if (targetUserId != null) {
+                    return favoriteRepository.findByUserId(targetUserId, pageable)
+                            .map(FavoriteResponseDTO::fromEntity);
+                }
+                return favoriteRepository.findAllWithDestination(pageable)
+                        .map(FavoriteResponseDTO::fromEntity);
             }
-            return favoriteRepository.findAllWithDestination()
-                    .stream()
-                    .map(FavoriteResponseDTO::fromEntity)
-                    .toList();
+            return favoriteRepository.findByUserId(authenticatedUserId, pageable)
+                    .map(FavoriteResponseDTO::fromEntity);
         }
 
-        return favoriteRepository.findByUserId(authenticatedUserId)
-                .stream()
-                .map(FavoriteResponseDTO::fromEntity)
-                .toList();
+        String pattern = "%" + cleanSearch.toLowerCase() + "%";
+
+        if (isAdmin) {
+            if (targetUserId != null) {
+                return favoriteRepository.findByUserIdAndSearch(targetUserId, pattern, pageable)
+                        .map(FavoriteResponseDTO::fromEntity);
+            }
+            return favoriteRepository.findAllWithSearch(pattern, pageable)
+                    .map(FavoriteResponseDTO::fromEntity);
+        }
+
+        return favoriteRepository.findByUserIdAndSearch(authenticatedUserId, pattern, pageable)
+                .map(FavoriteResponseDTO::fromEntity);
     }
 
     @Transactional(readOnly = true)

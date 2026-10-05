@@ -1,6 +1,5 @@
 package com.devrenanrodrigues.travelapi.favorite.dto;
 
-import com.devrenanrodrigues.travelapi.category.Category;
 import com.devrenanrodrigues.travelapi.favorite.Favorite;
 
 import java.time.Instant;
@@ -19,7 +18,8 @@ public record FavoriteResponseDTO(
         Integer destinationReviewCount,
         Double rating,
         Integer reviewCount,
-        Instant createdAt
+        Instant createdAt,
+        String aiCostEstimates
 ) {
     public static FavoriteResponseDTO fromEntity(Favorite favorite) {
         Double rating = (favorite.getDestination() != null && favorite.getDestination().getRating() != null)
@@ -33,6 +33,10 @@ public record FavoriteResponseDTO(
                 ? favorite.getDestination().getAllCategoryNames()
                 : List.of();
 
+        String aiCostEstimates = (favorite.getDestination() != null)
+                ? favorite.getDestination().getAiCostEstimates()
+                : null;
+
         return new FavoriteResponseDTO(
                 favorite.getId().getUserId(),
                 favorite.getDestination().getId(),
@@ -45,7 +49,8 @@ public record FavoriteResponseDTO(
                 reviewCount,
                 rating,
                 reviewCount,
-                favorite.getCreatedAt()
+                favorite.getCreatedAt(),
+                aiCostEstimates
         );
     }
 }

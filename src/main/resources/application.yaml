@@ -9,11 +9,11 @@ spring:
     password: ${DB_PASSWORD}
     driverClassName: org.postgresql.Driver
   jpa:
-    show-sql: true
+    show-sql: false
     hibernate:
       ddl-auto: update
     properties:
-      hibernate.format_sql: true
+      hibernate.format_sql: false
   servlet:
     multipart:
       max-file-size: 10MB

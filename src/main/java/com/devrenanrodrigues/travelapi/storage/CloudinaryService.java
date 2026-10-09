@@ -16,16 +16,16 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class CloudinaryService {
 
+    private static final long MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+
     private final Cloudinary cloudinary;
 
     public CloudinaryUploadResponse upload(MultipartFile file, String folder) {
-        if (file == null || file.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Arquivo vazio ou inválido.");
-        }
+        validateWebpFile(file);
 
         try {
             Map<?, ?> uploadResult = cloudinary.uploader().upload(
-                    file.getBytes(),
+                    file.getInputStream(),
                     ObjectUtils.asMap(
                             "folder", folder,
                             "resource_type", "image"
@@ -38,6 +38,26 @@ public class CloudinaryService {
             return new CloudinaryUploadResponse(secureUrl, publicId);
         } catch (IOException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Falha ao enviar imagem para o Cloudinary.");
+        }
+    }
+
+    private void validateWebpFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Arquivo vazio ou inválido.");
+        }
+
+        if (file.getSize() > MAX_FILE_SIZE_BYTES) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A imagem deve ter no máximo 5MB.");
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.equalsIgnoreCase("image/webp")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Formato inválido. Apenas imagens WebP são permitidas.");
+        }
+
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename == null || !originalFilename.toLowerCase().endsWith(".webp")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Formato inválido. A extensão do arquivo deve ser .webp.");
         }
     }
 

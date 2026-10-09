@@ -29,15 +29,6 @@ public class UserService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Arquivo de imagem obrigatório.");
         }
 
-        String contentType = file.getContentType();
-        String originalFilename = file.getOriginalFilename();
-        boolean isImageByContentType = contentType != null && contentType.startsWith("image/");
-        boolean isImageByExtension = originalFilename != null && originalFilename.matches("(?i).*\\.(jpg|jpeg|png|webp|gif|heic|bmp)$");
-
-        if (!isImageByContentType && !isImageByExtension) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O arquivo enviado deve ser uma imagem.");
-        }
-
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
 

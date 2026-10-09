@@ -59,13 +59,7 @@ public class CommentController {
             @PathVariable UUID destinationId,
             @AuthenticationPrincipal Jwt jwt
     ) {
-        UUID currentUserId = null;
-        if (jwt != null) {
-            try {
-                currentUserId = SecurityUtils.getUserId(jwt);
-            } catch (Exception ignored) {
-            }
-        }
+        UUID currentUserId = jwt != null ? SecurityUtils.getUserId(jwt) : null;
         return commentService.findByDestinationId(destinationId, currentUserId);
     }
 

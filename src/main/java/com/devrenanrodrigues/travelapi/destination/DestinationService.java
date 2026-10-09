@@ -101,7 +101,7 @@ public class DestinationService {
         destination.setCountry(trimmedCountry);
         if (dto.primaryCategory() != null || dto.categories() != null) {
             ResolvedCategories resolved = resolveCategories(dto.primaryCategory(), dto.categories());
-            if (dto.primaryCategory() != null || resolved.primary() != null) {
+            if (resolved.primary() != null) {
                 destination.setPrimaryCategory(resolved.primary());
             }
             if (dto.categories() != null) {

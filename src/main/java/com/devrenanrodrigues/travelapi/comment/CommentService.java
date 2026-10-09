@@ -139,7 +139,7 @@ public class CommentService {
             throw ex;
         }
 
-        String userName = user.getFullName() != null && !user.getFullName().isBlank() ? user.getFullName() : user.getEmail();
+        String userName = user.getFullName();
         String userAvatarUrl = user.getAvatarUrl();
         return CommentResponseDTO.fromEntity(saved, userName, userAvatarUrl, false);
     }
@@ -171,7 +171,7 @@ public class CommentService {
         List<CommentResponseDTO> comments = commentsList.stream()
                 .map(c -> {
                     User user = c.getUser();
-                    String userName = user != null ? (user.getFullName() != null && !user.getFullName().isBlank() ? user.getFullName() : user.getEmail()) : null;
+                    String userName = user != null ? user.getFullName() : null;
                     String userAvatarUrl = user != null ? user.getAvatarUrl() : null;
                     boolean isHelpful = votedCommentIds.contains(c.getId());
                     return CommentResponseDTO.fromEntity(c, userName, userAvatarUrl, isHelpful);
@@ -322,8 +322,8 @@ public class CommentService {
             cloudinaryService.delete(pubId);
         }
 
-        User user = updated.getUser() != null ? updated.getUser() : userRepository.findById(userId).orElse(null);
-        String userName = user != null ? (user.getFullName() != null && !user.getFullName().isBlank() ? user.getFullName() : user.getEmail()) : null;
+        User user = updated.getUser();
+        String userName = user != null ? user.getFullName() : null;
         String userAvatarUrl = user != null ? user.getAvatarUrl() : null;
         boolean isHelpful = commentHelpfulVoteRepository.existsByCommentIdAndUserId(updated.getId(), userId);
 
@@ -392,8 +392,8 @@ public class CommentService {
 
         Comment saved = commentRepository.save(comment);
 
-        User user = saved.getUser() != null ? saved.getUser() : userRepository.findById(saved.getUserId()).orElse(null);
-        String userName = user != null ? (user.getFullName() != null && !user.getFullName().isBlank() ? user.getFullName() : user.getEmail()) : null;
+        User user = saved.getUser();
+        String userName = user != null ? user.getFullName() : null;
         String userAvatarUrl = user != null ? user.getAvatarUrl() : null;
 
         return CommentResponseDTO.fromEntity(saved, userName, userAvatarUrl, isHelpful);

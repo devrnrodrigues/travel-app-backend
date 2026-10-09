@@ -15,7 +15,9 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import jakarta.persistence.Transient;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -36,6 +38,9 @@ public class RefreshToken {
     @Column(nullable = false, unique = true, length = 255)
     private String token;
 
+    @Transient
+    private String rawToken;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
@@ -50,6 +55,18 @@ public class RefreshToken {
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
+
+    public String getToken() {
+        return rawToken != null ? rawToken : token;
+    }
+
+    public String getStoredToken() {
+        return token;
+    }
 
     public boolean isExpired() {
         return Instant.now().isAfter(this.expiresAt);

@@ -34,9 +34,18 @@ public class AuthService {
     @Transactional
     public AuthResponseDTO loginWithGoogle(GoogleLoginRequestDTO request) {
         GoogleUserInfo userInfo = googleTokenVerifierService.verify(request.idToken());
+        String email = userInfo.email().trim().toLowerCase();
 
-        User user = userRepository.findByEmail(userInfo.email())
-                .map(existingUser -> updateExistingUser(existingUser, userInfo))
+        User user = userRepository.findByEmail(email)
+                .map(existingUser -> {
+                    if (existingUser.getProvider() == AuthProvider.LOCAL) {
+                        throw new ResponseStatusException(
+                                HttpStatus.BAD_REQUEST,
+                                "Esta conta foi criada com e-mail e senha. Por favor, faça login utilizando suas credenciais."
+                        );
+                    }
+                    return updateExistingUser(existingUser, userInfo);
+                })
                 .orElseGet(() -> createNewGoogleUser(userInfo));
 
         String token = jwtService.generateToken(user);
@@ -48,6 +57,15 @@ public class AuthService {
     @Transactional
     public AuthResponseDTO register(RegisterRequestDTO request) {
         String email = request.email().trim().toLowerCase();
+        String fullName = request.fullName().trim();
+        String password = request.password();
+
+        String localPart = email.contains("@") ? email.substring(0, email.indexOf('@')) : email;
+        if (password.equalsIgnoreCase(email)
+                || password.equalsIgnoreCase(localPart)
+                || password.equalsIgnoreCase(fullName)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A senha não pode ser igual ao seu nome ou e-mail.");
+        }
 
         if (userRepository.existsByEmail(email)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Este e-mail já está em uso.");
@@ -111,7 +129,7 @@ public class AuthService {
 
     private User createNewGoogleUser(GoogleUserInfo userInfo) {
         User newUser = User.builder()
-                .email(userInfo.email())
+                .email(userInfo.email().trim().toLowerCase())
                 .fullName(userInfo.name())
                 .avatarUrl(userInfo.pictureUrl())
                 .provider(AuthProvider.GOOGLE)

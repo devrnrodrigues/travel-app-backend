@@ -4,6 +4,7 @@ import com.devrenanrodrigues.travelapi.user.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -11,8 +12,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.HexFormat;
 import java.util.UUID;
 
 @Service
@@ -27,9 +32,13 @@ public class RefreshTokenService {
 
     @Transactional
     public RefreshToken createRefreshToken(User user) {
+        String rawToken = UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", "");
+        String tokenHash = hashToken(rawToken);
+
         RefreshToken refreshToken = RefreshToken.builder()
                 .user(user)
-                .token(UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", ""))
+                .token(tokenHash)
+                .rawToken(rawToken)
                 .expiresAt(Instant.now().plus(refreshTokenExpirationDays, ChronoUnit.DAYS))
                 .revoked(false)
                 .build();
@@ -39,7 +48,10 @@ public class RefreshTokenService {
 
     @Transactional
     public RefreshToken verifyAndRotate(String tokenString) {
-        RefreshToken existingToken = refreshTokenRepository.findByToken(tokenString)
+        String tokenHash = hashToken(tokenString);
+
+        RefreshToken existingToken = refreshTokenRepository.findByToken(tokenHash)
+                .or(() -> refreshTokenRepository.findByToken(tokenString))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token inválido."));
 
         if (existingToken.isRevoked()) {
@@ -61,9 +73,31 @@ public class RefreshTokenService {
 
     @Transactional
     public void revokeToken(String tokenString) {
-        refreshTokenRepository.findByToken(tokenString).ifPresent(token -> {
-            token.setRevoked(true);
-            refreshTokenRepository.saveAndFlush(token);
-        });
+        String tokenHash = hashToken(tokenString);
+
+        refreshTokenRepository.findByToken(tokenHash)
+                .or(() -> refreshTokenRepository.findByToken(tokenString))
+                .ifPresent(token -> {
+                    token.setRevoked(true);
+                    refreshTokenRepository.saveAndFlush(token);
+                });
+    }
+
+    @Scheduled(cron = "0 0 3 * * *")
+    @Transactional
+    public void purgeExpiredAndRevokedTokens() {
+        Instant now = Instant.now();
+        Instant revokedCutoff = now.minus(7, ChronoUnit.DAYS);
+        refreshTokenRepository.deleteExpiredOrRevokedBefore(now, revokedCutoff);
+    }
+
+    private String hashToken(String token) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 não disponível", e);
+        }
     }
 }

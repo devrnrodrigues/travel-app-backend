@@ -275,4 +275,35 @@ public class CollectionService {
             cloudinaryService.delete(publicIdToDelete);
         }
     }
+
+    @Transactional
+    public CollectionResponseDTO setCoverPhoto(UUID collectionId, UUID photoId, UUID userId) {
+        if (!collectionRepository.existsByIdAndUserId(collectionId, userId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Coleção não encontrada.");
+        }
+
+        Collection collection = collectionRepository.findByIdAndUserIdWithPhotos(collectionId, userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Coleção não encontrada."));
+
+        if (collection.getPhotos() == null || collection.getPhotos().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Coleção sem fotos.");
+        }
+
+        CollectionPhoto target = collection.getPhotos().stream()
+                .filter(p -> p.getId().equals(photoId))
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Foto não encontrada na coleção."));
+
+        int order = 1;
+        for (CollectionPhoto p : collection.getPhotos()) {
+            if (p.getId().equals(photoId)) {
+                p.setOrderIndex(0);
+            } else {
+                p.setOrderIndex(order++);
+            }
+        }
+
+        Collection saved = collectionRepository.save(collection);
+        return CollectionResponseDTO.fromEntity(saved);
+    }
 }

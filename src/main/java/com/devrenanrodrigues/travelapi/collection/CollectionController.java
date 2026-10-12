@@ -115,4 +115,15 @@ public class CollectionController {
         collectionService.deletePhoto(id, photoId, userId);
         return ResponseEntity.noContent().build();
     }
+
+    @PutMapping("/{id}/photos/{photoId}/cover")
+    public ResponseEntity<CollectionResponseDTO> setCoverPhoto(
+            @PathVariable UUID id,
+            @PathVariable UUID photoId,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        UUID userId = SecurityUtils.getUserId(jwt);
+        CollectionResponseDTO response = collectionService.setCoverPhoto(id, photoId, userId);
+        return ResponseEntity.ok(response);
+    }
 }

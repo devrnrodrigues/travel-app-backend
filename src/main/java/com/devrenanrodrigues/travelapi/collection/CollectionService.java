@@ -60,6 +60,10 @@ public class CollectionService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado.");
         }
 
+        if (files != null && files.size() > 10) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O limite máximo é de 10 fotos por envio.");
+        }
+
         List<CloudinaryUploadResponse> uploadResponses = new ArrayList<>();
         if (files != null && !files.isEmpty()) {
             String folder = "travel-app/collections/" + userId;
@@ -180,6 +184,10 @@ public class CollectionService {
     public CollectionResponseDTO addPhotos(UUID id, UUID userId, List<MultipartFile> files) {
         if (files == null || files.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nenhuma foto informada para envio.");
+        }
+
+        if (files.size() > 10) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O limite máximo é de 10 fotos por envio.");
         }
 
         Collection collection = collectionRepository.findByIdAndUserIdWithPhotos(id, userId)

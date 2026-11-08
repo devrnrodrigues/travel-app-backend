@@ -49,7 +49,7 @@
 * **Catálogo de Destinos Turísticos:**
   * Listagem paginada de destinos com suporte a busca textual por nome/cidade e filtros por categorias temáticas.
   * Consulta detalhada com fotos em alta definição, previsão meteorológica e avaliações associadas.
-  * Metadados enriquecidos para IA (resumos culturais e estimativas de custo de viagem).
+  * Metadados enriquecidos para IA (resumos culturais e estimativas de custo de viagem) com máquina de estados (`PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`) e timestamp de cache.
   * Operações de criação, edição e exclusão restritas a administradores (`ROLE_ADMIN`).
 * **Categorias Temáticas:**
   * Organização de destinos por ambientes (praias, montanhas, florestas, cidades históricas).
@@ -60,12 +60,13 @@
   * Consulta em tempo real de passagens aéreas via integração com Booking.com (RapidAPI), incluindo filtros de cabine, passageiros e escalas.
 * **Clima e Previsão Meteorológica:**
   * Consulta automatizada de dados climáticos via Open-Meteo.
-  * Armazenamento de previsão em cache relacional no PostgreSQL com tempo de vida (TTL) configurável.
-  * Mecanismo de contingência suave que retorna dados em cache caso a API externa sofra instabilidade.
+  * Tradução de códigos internacionais da Organização Meteorológica Mundial (`WmoWeatherCode`) para condições em português ("Céu limpo", "Pancadas de chuva", "Tempestade com granizo", etc.).
+  * Armazenamento de previsão em cache relacional no PostgreSQL com tempo de vida (TTL) configurável e contingência suave caso o serviço externo falhe.
 * **Avaliações da Comunidade:**
-  * Sistema de notas de 1 a 5 estrelas e comentários detalhados.
+  * Sistema de notas de 1 a 5 estrelas e comentários detalhados com regra anti-spam (limite de 1 avaliação por usuário em cada destino).
   * Upload de fotos anexadas em formato polaroid (até 5 fotos por comentário).
-  * Votação de comentários mais úteis por outros viajantes da comunidade.
+  * Votação de comentários úteis por outros viajantes com comportamento idempotente (*toggle*).
+  * Recálculo atômico e automático da nota média ponderada e quantidade total de avaliações do destino a cada criação, edição ou exclusão de comentário.
 * **Coleções Fotográficas Pessoais:**
   * Criação e organização de álbuns de viagem pelo próprio usuário.
   * Upload múltiplo de fotos, edição de legendas e definição de foto de capa do álbum.
@@ -89,10 +90,11 @@
     * **UPLOAD:** limite de 20 requisições por minuto (envio de fotos de avatar, comentários e coleções).
     * **GENERAL:** limite de 120 requisições por minuto para os demais endpoints.
     * Suporte a proxies reversos com leitura dos cabeçalhos `X-Forwarded-For` e `X-Real-IP`.
+  * **Proteção ativa de memória (Anti-Memory Leak):** rotina agendada via `@Scheduled(fixedRate = 600000)` a cada 10 minutos expurga automaticamente os baldes ociosos (`isIdle`) do `ConcurrentHashMap`, impedindo o consumo descontrolado de RAM por acessos de IPs esporádicos.
 * **Controle de Acesso Baseado em Papéis (RBAC):**
   * Separação rigorosa entre `ROLE_USER` (operações pessoais e de comunidade) e `ROLE_ADMIN` (gestão do catálogo e infraestrutura).
 * **Transações Compensatórias para Uploads:**
-  * O processamento e upload de fotos no Cloudinary é executado fora da transação do banco de dados (evitando travamento de conexões). Em caso de falha de persistência no PostgreSQL, uma rotina compensatória remove automaticamente as imagens recém-enviadas da nuvem.
+  * Uso de `TransactionTemplate` para segregação programática estrita: o upload para o Cloudinary ocorre fora da transação JDBC do banco de dados (evitando prender conexões do pool HikariCP durante tráfego de rede). Em caso de falha de persistência no PostgreSQL, uma rotina compensatória remove automaticamente as imagens recém-enviadas da nuvem.
 * **Cabecalhos HTTP Recomendados pela OWASP:**
   * Configurações de segurança no filtro de resposta HTTP, incluindo `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Strict-Transport-Security` (HSTS de 1 ano com subdomínios) e `Referrer-Policy: strict-origin-when-cross-origin`.
 
@@ -164,6 +166,17 @@ com.devrenanrodrigues.travelapi
 ├── user             # Dados de usuário, upload de avatar, papéis (USER e ADMIN) e provedores
 └── weather          # Integração meteorológica Open-Meteo e persistência de cache climático
 ```
+
+### Destaques de Engenharia e Persistência
+
+* **Otimização no Hibernate / JPA (Prevenção de N+1):** aplicação explícita de `@BatchSize(size = 50)` no relacionamento `@ManyToMany` entre destinos e categorias, garantindo carregamento em lote eficiente e eliminando consultas SQL redundantes em listagens paginadas.
+* **Tipos Nativos do PostgreSQL:**
+  * Uso de `@JdbcTypeCode(SqlTypes.JSON)` gravando estimativas de custo de IA em coluna nativa **`jsonb`**.
+  * Mapeamento de listas de resumos turísticos (`ai_summary`) diretamente para o tipo de array nativo **`text[]`** do PostgreSQL.
+* **Chave Primária Composta Relacional (`@Embeddable FavoriteId`):**
+  * A tabela de favoritos vincula `userId` e `destinationId` através de chave composta nativa, assegurando unicidade e integridade no motor relacional sem necessidade de chaves artificiais (*surrogate keys*).
+* **Comunicação Externa Moderna (Fluent API):**
+  * Integração com as APIs da Booking.com (RapidAPI) e Open-Meteo através do cliente síncrono moderno `RestClient` do Spring Framework, com tratamento e tradução de erros de rede para `502 Bad Gateway`.
 
 ### Rotas da API
 
@@ -311,7 +324,7 @@ com.devrenanrodrigues.travelapi
 > [!NOTE]
 > A documentação interativa com **Swagger / OpenAPI 3** (`springdoc-openapi-starter-webmvc-ui`) está atualmente em fase de **planejamento e implementação**.
 >
-> Enquanto isso, todos os 47 endpoints, parâmetros de acesso, payloads e respostas estão documentados diretamente na seção [Rotas da API](#rotas-da-api) deste README.
+> A infraestrutura de segurança (`SecurityConfig`) já está pré-configurada liberando publicamente os caminhos `/v3/api-docs/**`, `/swagger-ui/**` e `/swagger-ui.html`. Enquanto a interface interativa é finalizada, todos os 47 endpoints, parâmetros de acesso, payloads e respostas estão documentados diretamente na seção [Rotas da API](#rotas-da-api) deste README.
 
 ---
 

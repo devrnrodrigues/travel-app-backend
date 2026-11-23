@@ -1,0 +1,34 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+
+jwt:
+  secret: 1234567890123456789012345678901234567890123456789012345678901234
+  expiration-seconds: 3600
+  refresh-token-expiration-days: 30
+
+rapidapi:
+  booking:
+    base-url: http://localhost:8089
+    key: test-key
+    host: test-host
+
+weather:
+  open-meteo:
+    base-url: http://localhost:8089
+    cache-ttl-hours: 1
+
+google:
+  client-id: test-client-id
+
+cloudinary:
+  cloud-name: test-cloud
+  api-key: test-api-key
+  api-secret: test-api-secret

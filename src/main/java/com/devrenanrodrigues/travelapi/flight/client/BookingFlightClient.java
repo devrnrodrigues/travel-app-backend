@@ -4,6 +4,8 @@ import com.devrenanrodrigues.travelapi.flight.dto.FlightSearchRequestDTO;
 import com.devrenanrodrigues.travelapi.flight.dto.MultiStopsFlightSearchRequestDTO;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -12,6 +14,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Component
 public class BookingFlightClient {
+
+    private static final Logger log = LoggerFactory.getLogger(BookingFlightClient.class);
 
     private final RestClient restClient;
     private final BookingProperties properties;
@@ -30,6 +34,7 @@ public class BookingFlightClient {
 
     public JsonNode searchFlights(FlightSearchRequestDTO request) {
         try {
+            log.info("Consultando Booking API para voos: {} -> {}, data: {}", request.fromId(), request.toId(), request.departDate());
             String rawJson = restClient.get()
                     .uri(uriBuilder -> {
                         uriBuilder.path("/api/v1/flights/searchFlights")
@@ -56,12 +61,14 @@ public class BookingFlightClient {
 
             return objectMapper.readTree(rawJson);
         } catch (Exception ex) {
+            log.error("Erro ao consultar Booking Flight API ({} -> {}): {}", request.fromId(), request.toId(), ex.getMessage());
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Falha ao consultar a API de voos externa: " + ex.getMessage(), ex);
         }
     }
 
     public JsonNode searchFlightsMultiStops(MultiStopsFlightSearchRequestDTO request) {
         try {
+            log.info("Consultando Booking API para voos múltiplos: {}", request.legs());
             String rawJson = restClient.get()
                     .uri(uriBuilder -> {
                         uriBuilder.path("/api/v1/flights/searchFlightsMultiStops")
@@ -83,6 +90,7 @@ public class BookingFlightClient {
 
             return objectMapper.readTree(rawJson);
         } catch (Exception ex) {
+            log.error("Erro ao consultar Booking Flight API múltiplos trechos: {}", ex.getMessage());
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Falha ao consultar a API de voos externa: " + ex.getMessage(), ex);
         }
     }

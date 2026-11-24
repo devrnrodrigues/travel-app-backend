@@ -53,11 +53,14 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/destinations/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/destinations/*/weather").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/destinations/*/comments").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+
+                        .requestMatchers("/actuator/**").hasRole("ADMIN")
 
                         .requestMatchers(HttpMethod.POST, "/api/destinations/*/comments").hasAnyRole("USER", "ADMIN")
 

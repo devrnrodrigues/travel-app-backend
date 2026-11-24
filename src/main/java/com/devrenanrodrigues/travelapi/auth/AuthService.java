@@ -14,12 +14,14 @@ import com.devrenanrodrigues.travelapi.user.User;
 import com.devrenanrodrigues.travelapi.user.UserRepository;
 import com.devrenanrodrigues.travelapi.user.dto.UserResponseDTO;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -39,6 +41,7 @@ public class AuthService {
         User user = userRepository.findByEmail(email)
                 .map(existingUser -> {
                     if (existingUser.getProvider() == AuthProvider.LOCAL) {
+                        log.warn("Tentativa de login via Google rejeitada: e-mail [{}] vinculado a provedor LOCAL", email);
                         throw new ResponseStatusException(
                                 HttpStatus.BAD_REQUEST,
                                 "Esta conta foi criada com e-mail e senha. Por favor, faça login utilizando suas credenciais."
@@ -51,6 +54,7 @@ public class AuthService {
         String token = jwtService.generateToken(user);
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
         long commentsCount = commentRepository.countByUserId(user.getId());
+        log.info("Login com Google bem-sucedido para o usuário: [{}]", email);
         return AuthResponseDTO.of(token, refreshToken.getToken(), jwtService.getExpirationSeconds(), UserResponseDTO.fromEntity(user, commentsCount));
     }
 
@@ -68,6 +72,7 @@ public class AuthService {
         }
 
         if (userRepository.existsByEmail(email)) {
+            log.warn("Tentativa de registro com e-mail já existente: [{}]", email);
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Este e-mail já está em uso.");
         }
 
@@ -82,6 +87,7 @@ public class AuthService {
         newUser = userRepository.saveAndFlush(newUser);
         String token = jwtService.generateToken(newUser);
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(newUser);
+        log.info("Novo usuário cadastrado com sucesso: [{}]", email);
         return AuthResponseDTO.of(token, refreshToken.getToken(), jwtService.getExpirationSeconds(), UserResponseDTO.fromEntity(newUser));
     }
 
@@ -90,19 +96,25 @@ public class AuthService {
         String email = request.email().trim().toLowerCase();
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "E-mail ou senha inválidos."));
+                .orElseThrow(() -> {
+                    log.warn("Falha no login: e-mail [{}] não encontrado", email);
+                    return new ResponseStatusException(HttpStatus.UNAUTHORIZED, "E-mail ou senha inválidos.");
+                });
 
         if (user.getPasswordHash() == null || user.getProvider() == AuthProvider.GOOGLE) {
+            log.warn("Falha no login com senha: conta [{}] cadastrada via Google", email);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Esta conta foi criada com o Google. Por favor, faça login utilizando o botão do Google.");
         }
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+            log.warn("Falha no login: senha incorreta para e-mail [{}]", email);
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "E-mail ou senha inválidos.");
         }
 
         String token = jwtService.generateToken(user);
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
         long commentsCount = commentRepository.countByUserId(user.getId());
+        log.info("Usuário autenticado com sucesso: [{}]", email);
         return AuthResponseDTO.of(token, refreshToken.getToken(), jwtService.getExpirationSeconds(), UserResponseDTO.fromEntity(user, commentsCount));
     }
 
@@ -111,6 +123,7 @@ public class AuthService {
         RefreshToken newRefreshToken = refreshTokenService.verifyAndRotate(request.refreshToken());
         User user = newRefreshToken.getUser();
         String newAccessToken = jwtService.generateToken(user);
+        log.debug("Token JWT renovado para usuário: [{}]", user.getEmail());
         return TokenResponseDTO.of(newAccessToken, newRefreshToken.getToken(), jwtService.getExpirationSeconds());
     }
 

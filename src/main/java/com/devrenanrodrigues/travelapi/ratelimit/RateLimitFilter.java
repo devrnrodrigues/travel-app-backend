@@ -7,6 +7,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -20,6 +22,8 @@ import java.io.IOException;
 @Order(Ordered.HIGHEST_PRECEDENCE + 5)
 @RequiredArgsConstructor
 public class RateLimitFilter extends OncePerRequestFilter {
+
+    private static final Logger log = LoggerFactory.getLogger(RateLimitFilter.class);
 
     private final RateLimitService rateLimitService;
     private final ObjectMapper objectMapper;
@@ -46,6 +50,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
         boolean allowed = rateLimitService.tryAcquire(clientIp, tier);
         if (!allowed) {
+            log.warn("Rate limit excedido [tier={}] para IP: {} na rota: {} {}", tier, clientIp, request.getMethod(), uri);
             response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.setCharacterEncoding("UTF-8");

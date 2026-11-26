@@ -135,11 +135,15 @@ A aplicação utiliza um manipulador global de exceções (`GlobalExceptionHandl
 ```
 
 * **400 Bad Request:** retornado em falhas de validação sintática ou regras de negócio (com mapa de `fieldErrors`).
-* **401 Unauthorized:** credenciais ausentes, inválidas ou token expirado.
-* **403 Forbidden:** acesso a recurso restrito a papel superior (ex: rota de administrador).
-* **404 Not Found:** identificador de destino, comentário, coleção ou usuário inexistente.
+* **401 Unauthorized:** credenciais ausentes, inválidas, token expirado ou refresh token revogado.
+* **403 Forbidden:** acesso a recurso restrito a papel superior (ex: rota de administrador) ou dados privados de terceiros.
+* **404 Not Found:** identificador inexistente (destino, comentário, coleção, aeroporto, usuário) ou rota não mapeada.
+* **405 Method Not Allowed:** tentativa de invocar um método HTTP não suportado pela rota solicitada.
+* **409 Conflict:** violações de unicidade (e-mail, código IATA ou slug já cadastrado) ou integridade de dados (exclusão de destino com avaliações ou favoritos associados).
+* **415 Unsupported Media Type:** cabeçalho `Content-Type` recebido incompatível com o formato exigido pelo endpoint.
 * **429 Too Many Requests:** acionamento do limite de requisições por minuto no filtro de rate limiting.
 * **500 Internal Server Error:** mensagens genéricas e seguras voltadas ao cliente, com log detalhado registrado no servidor.
+* **502 Bad Gateway:** falha de conectividade ou indisponibilidade na comunicação com serviços externos (Booking.com via RapidAPI).
 
 ---
 

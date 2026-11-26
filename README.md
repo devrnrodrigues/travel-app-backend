@@ -36,6 +36,8 @@
 | **RestClient & Jackson** | Cliente HTTP moderno síncrono e motor de serialização/desserialização JSON de alta performance. |
 | **Lombok** | Redução de código *boilerplate* através de anotações automáticas de getters, setters, builders e construtores. |
 | **Apache Maven** | Gerenciador de dependências e automação de build do ciclo de vida da aplicação. |
+| **Spring Boot Actuator** | Monitoramento de métricas, integridade do sistema (health checks) e probes de liveness/readiness. |
+| **JUnit 5 & Mockito** | Suíte de testes unitários e de integração desacoplados para validação de regras de negócio e contratos HTTP. |
 
 ---
 
@@ -355,13 +357,75 @@ As variáveis de ambiente da aplicação podem ser configuradas no sistema opera
 
 ## Testes
 
-> [!NOTE]
-> A suíte de testes automatizados do backend está atualmente em fase de **planejamento e estruturação**.
+A aplicação conta com uma suíte de **153 testes automatizados** cobrindo todas as camadas arquiteturais. A estratégia de testes foi concebida de forma **completamente desacoplada**, garantindo rapidez de execução e independência de serviços externos ou banco de dados relacional em execução.
 
-### Escopo e ferramentas planejadas:
-* **Testes unitários:** [JUnit 5](https://junit.org/junit5/) e [Mockito](https://site.mockito.org/) para validação isolada de regras de negócio em serviços (`Services`), validações de senha e rate limiting.
-* **Testes de integração de endpoints:** [Spring WebMvc Test](https://docs.spring.io/spring-boot/docs/current/reference/html/features.html#features.testing) com `MockMvc` para os controladores REST e filtros de segurança.
-* **Testes de persistência:** `@DataJpaTest` com banco relacional de teste para validação de queries, relacionamentos e transações de banco de dados.
+### Divisão da Suíte de Testes
+
+| Camada | Ferramentas | Quantidade de Testes | Foco e Validações |
+| :--- | :--- | :---: | :--- |
+| **Controladores REST** | `Spring WebMvc Test`, `MockMvc` | **31 testes** | Contratos de API, status HTTP (200, 201, 204, 400, 401, 403, 404, 429), serialização JSON, validações de payload (`@Valid`) e RBAC nos 47 endpoints. |
+| **Regras de Negócio e Serviços** | `JUnit 5`, `Mockito` | **51 testes** | Lógica de negócio, fluxos transacionais, orquestração de refresh tokens, pontuação ponderada de avaliações, contingências climáticas e uploads no Cloudinary. |
+| **Segurança e Rate Limiting** | `JUnit 5`, `Mockito` | **10 testes** | Algoritmo de balde de tokens (`TokenBucket`), recarga temporal, limpeza automática de baldes ociosos (anti-leak) e bloqueio com HTTP 429 no `RateLimitFilter`. |
+| **Tratamento de Exceções** | `Spring WebMvc Test`, `MockMvc` | **11 testes** | Respostas padronizadas via `GlobalExceptionHandler` (`ErrorResponseDTO`) para erros de validação, métodos não suportados, parâmetros ausentes e falhas de negócio. |
+| **Componentes de Domínio e Validações** | `JUnit 5` | **50 testes** | Validador estrito de senhas (`PasswordValidator`), mapeamento de DTOs, conversores de enumeração e utilitários de domínio. |
+
+### Como Executar os Testes
+
+Para executar toda a suíte de testes automatizados:
+
+No Windows (PowerShell / Prompt):
+```bash
+.\mvnw.cmd test
+```
+
+No Linux ou macOS:
+```bash
+./mvnw test
+```
+
+#### Executar uma classe de teste específica:
+```bash
+.\mvnw.cmd test -Dtest=AuthServiceTest
+```
+
+#### Executar um método de teste específico:
+```bash
+.\mvnw.cmd test -Dtest=AuthServiceTest#shouldRegisterUserSuccessfully
+```
+
+---
+
+## Observabilidade e Monitoramento
+
+A aplicação utiliza o **Spring Boot Actuator** e um sistema de **logging estruturado** para monitoramento contínuo de saúde, métricas e auditoria operacional em tempo de execução.
+
+### 1. Endpoints do Spring Boot Actuator
+
+Os endpoints de observabilidade são expostos em `/actuator` e contam com controle de acesso granular configurado no Spring Security:
+
+| Endpoint | Método | Acesso | Finalidade |
+| :--- | :---: | :--- | :--- |
+| `/actuator/health` | `GET` | Público | Indicador geral de integridade da aplicação (Up/Down) e status de dependências. |
+| `/actuator/health/liveness` | `GET` | Público | Probe de liveness (compatível com orquestradores como Kubernetes e Docker Swarm). |
+| `/actuator/health/readiness` | `GET` | Público | Probe de readiness indicando prontidão para receber tráfego de rede. |
+| `/actuator/info` | `GET` | Público | Informações gerais sobre a versão e o ambiente da aplicação. |
+| `/actuator/metrics` | `GET` | Restrito (`ROLE_ADMIN`) | Métricas detalhadas de consumo de CPU, heap de memória JVM, threads ativas, pool de conexões HikariCP e estatísticas de chamadas HTTP. |
+
+### 2. Logging Estruturado
+
+A aplicação adota o padrão SLF4J com Logback, configurado com layout padronizado para fácil parsing em agregadores de logs (ex: Datadog, Grafana Loki, CloudWatch, ELK):
+
+```text
+2026-11-24 18:21:14.388 [main] INFO  c.d.t.a.AuthService - Novo usuário cadastrado com sucesso: [viajante@email.com]
+```
+
+* **Níveis de Log por Ambiente:**
+  * **Produção (`application.yaml`):** Nível `INFO` para o pacote raiz e `com.devrenanrodrigues.travelapi`. Eventos de segurança em `WARN`.
+  * **Desenvolvimento Local (`application-local.yaml`):** Nível `DEBUG` para rastreamento aprofundado de fluxos e dados transitados.
+* **Pontos de Auditoria e Rastreamento:**
+  * **Autenticação:** Registro de novos cadastros, autenticações com e-mail/senha, logins sociais com Google, renovação de tokens JWT e alertas (`WARN`) sobre credenciais incorretas ou tentativas de login em contas de provedores conflitantes.
+  * **Rate Limiting:** Alertas com nível `WARN` contendo o IP de origem, método HTTP e URI sempre que o limite de requisições por minuto for extrapolado (resposta 429).
+  * **Integrações Externas:** Logs de chamadas de cotação de voos (Booking API) e previsões meteorológicas (Open-Meteo), com captura de erros (`ERROR`/`WARN`) sem interrupção abrupta da experiência do usuário.
 
 ---
 
